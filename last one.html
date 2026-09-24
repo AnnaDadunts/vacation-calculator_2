@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="hy">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Արձակուրդների, Պահուստաֆոնդի և Ռիսկերի Հաշվիչ</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 15px; background-color: #f4f6f9; }
+        .container { max-width: 100%; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow-x: auto; }
+        h2 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+        .form-group { display: flex; flex-direction: column; }
+        label { margin-bottom: 4px; font-weight: bold; color: #333; font-size: 12px; }
+        input, select { padding: 7px 9px; border: 1px solid #ccc; border-radius: 5px; font-size: 13px; }
+        .vacation-history-box { background-color: #eef2f5; padding: 12px; border-radius: 6px; margin-top: 12px; border: 1px solid #dcdfe3; }
+        .vacation-row { display: flex; gap: 8px; margin-bottom: 6px; align-items: center; flex-wrap: wrap; }
+        .btn-add-row { background-color: #17a2b8; color: white; padding: 5px 10px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer; margin-top: 4px; }
+        .btn-remove-row { background-color: #dc3545; color: white; padding: 5px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; }
+        
+        .btn-group { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
+        button.action-btn { flex: 1; padding: 10px; border: none; border-radius: 5px; font-size: 13px; font-weight: bold; cursor: pointer; min-width: 150px; }
+        .btn-add { background-color: #28a745; color: white; }
+        .btn-add:hover { background-color: #218838; }
+        .btn-template { background-color: #ffc107; color: #212529; }
+        .btn-template:hover { background-color: #e0a800; }
+        .btn-export { background-color: #207245; color: white; }
+        .btn-export:hover { background-color: #155231; }
+        .btn-import { background-color: #6c757d; color: white; }
+        .btn-import:hover { background-color: #5a6268; }
+        .btn-delete { background-color: #dc3545; color: white; padding: 4px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; }
+        
+        .alert-box { margin-top: 15px; padding: 12px; border-radius: 5px; display: none; font-weight: bold; font-size: 13px; }
+        .alert-warning { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .search-box { margin-top: 15px; display: flex; justify-content: flex-end; }
+        .search-box input { width: 220px; }
+        
+        .table-responsive { width: 100%; overflow-x: auto; margin-top: 15px; }
+        table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+        th, td { border: 1px solid #dee2e6; padding: 7px 9px; text-align: center; font-size: 12px; }
+        th { background-color: #e9ecef; color: #495057; }
+        th.year-header { background-color: #d1ecf1; color: #0c5460; }
+        .badge-danger { background-color: #dc3545; color: white; padding: 3px 6px; border-radius: 4px; font-size: 10px; }
+        .badge-success { background-color: #28a745; color: white; padding: 3px 6px; border-radius: 4px; font-size: 10px; }
+        .history-tag { display: block; background: #fff; padding: 2px 4px; margin-bottom: 2px; border-radius: 3px; border: 1px solid #ccc; font-size: 10px; text-align: left; }
+        .expired-cell { background-color: #f8d7da; color: #721c24; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Արձակուրդների, Պահուստաֆոնդի և Ռիսկերի Հաշվիչ</h2>
+
+    <div class="form-grid" id="inputForm">
+        <div class="form-group">
+            <label for="empCode">Տաբելային համար:</label>
+            <input type="text" id="empCode" class="focusable" placeholder="օր․ 0001">
+        </div>
+
+        <div class="form-group">
+            <label for="empName">Ազգանուն, Անուն:</label>
+            <input type="text" id="empName" class="focusable" placeholder="օր․ Անուն Ազգանուն">
+        </div>
+
+        <div class="form-group">
+            <label for="startDate">Ընդունման ամսաթիվ:</label>
+            <input type="date" id="startDate" class="focusable">
+        </div>
+
+        <div class="form-group">
+            <label for="workSchedule">Աշխատանքային ռեժիմ:</label>
+            <select id="workSchedule" class="focusable">
+                <option value="20" selected>5-օրյա (20 աշխ. օր/տարի, 21-ի բաժանումով)</option>
+                <option value="24">6-օրյա (24 աշխ. օր/տարի, 25-ի բաժանումով)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="extraDays">Լրացուցիչ արձակուրդ (օր/տարի):</label>
+            <input type="number" id="extraDays" class="focusable" value="0" min="0" placeholder="օր․ 0, 4, 8">
+        </div>
+
+        <div class="form-group">
+            <label for="salary">Միջին ամսական աշխատավարձ (AMD):</label>
+            <input type="number" id="salary" class="focusable" placeholder="օր․ 200000" min="0" step="any">
+        </div>
+
+        <div class="form-group">
+            <label for="calcDate">Որ օրվա դրությամբ հաշվարկել:</label>
+            <input type="date" id="calcDate" class="focusable">
+        </div>
+    </div>
+
+    <div class="vacation-history-box">
+        <label>Արձակուրդների պատմություն (Վճարովի / Իր հաշվին)․</label>
+        <div id="vacationContainer">
+            <div class="vacation-row">
+                <select class="v-type focusable">
+                    <option value="paid">Վճարովի արձակուրդ</option>
+                    <option value="unpaid">Իր հաշվին (չվճարվող)</option>
+                </select>
+                <input type="date" class="v-date focusable">
+                <input type="number" class="v-days focusable" placeholder="Քանի՞ օր" min="0.5" step="0.5" style="width: 110px;">
+                <button type="button" class="btn-remove-row" onclick="removeVacationRow(this)">✕</button>
+            </div>
+        </div>
+        <button type="button" class="btn-add-row" onclick="addVacationRow()">+ Ավելացնել ևս մեկ գրանցում</button>
+    </div>
+
+    <div class="btn-group">
+        <button class="action-btn btn-add" id="btnAddEmp" onclick="addEmployee()">Հաշվարկել և Ավելացնել</button>
+        <button class="action-btn btn-template" onclick="downloadTemplate()">📥 Ներբեռնել Excel Ձևանմուշ</button>
+        <button class="action-btn btn-export" onclick="exportToExcel()">📊 Արտահանել Հաշվարկը</button>
+        <button class="action-btn btn-import" onclick="document.getElementById('importFile').click()">📤 Ներմուծել Excel-ից</button>
+        <input type="file" id="importFile" accept=".xlsx, .xls" style="display: none;" onchange="importFromExcel(event)">
+    </div>
+
+    <div id="alertBox" class="alert-box"></div>
+
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="🔍 Որոնել (անուն կամ տաբել)..." onkeyup="filterTable()">
+    </div>
+
+    <div class="table-responsive">
+        <table id="empTable">
+            <thead>
+                <tr>
+                    <th>Տաբել</th>
+                    <th>Ազգանուն Անուն</th>
+                    <th>Ընդունման ամսաթիվ</th>
+                    <th>Ստաժ</th>
+                    <th>Կուտակված / Օգտագործված</th>
+                    <th>Ընդհանուր Մնացորդ</th>
+                    
+                    <!-- 1-ին Փուլ -->
+                    <th class="year-header">Աշխատանքային տարի</th>
+                    <th class="year-header">Օրերի քանակ</th>
+                    <th class="year-header">Արձակուրդի սկզբի վերջնաժամկետ</th>
+
+                    <!-- 2-րդ Փուլ -->
+                    <th class="year-header">Աշխատանքային տարի</th>
+                    <th class="year-header">Օրերի քանակ</th>
+                    <th class="year-header">Արձակուրդի սկզբի վերջնաժամկետ</th>
+
+                    <!-- 3-րդ Փուլ -->
+                    <th class="year-header">Աշխատանքային տարի</th>
+                    <th class="year-header">Օրերի քանակ</th>
+                    <th class="year-header">Արձակուրդի սկզբի վերջնաժամկետ</th>
+
+                    <th>Պահուստ / Վերջնահաշվարկ</th>
+                    <th>Կարգավիճակ</th>
+                    <th>Գործողություն</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    document.getElementById('calcDate').valueAsDate = new Date();
+
+    let employeeList = [];
+
+    function formatMoney(amount) {
+        return amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function addMonths(date, months) {
+        let d = new Date(date);
+        d.setMonth(d.getMonth() + months);
+        return d;
+    }
+
+    function formatDate(d) {
+        if (!d || isNaN(d.getTime())) return "-";
+        let day = String(d.getDate()).padStart(2, '0');
+        let month = String(d.getMonth() + 1).padStart(2, '0');
+        let year = d.getFullYear();
+        return `${day}.${month}.${year}`;
+    }
+
+    function clearInputs() {
+        document.getElementById('empCode').value = '';
+        document.getElementById('empName').value = '';
+        document.getElementById('startDate').value = '';
+        document.getElementById('salary').value = '';
+        document.getElementById('extraDays').value = '0';
+        document.getElementById('workSchedule').value = '20';
+        resetVacationRows();
+    }
+
+    function resetVacationRows() {
+        const container = document.getElementById('vacationContainer');
+        container.innerHTML = `
+            <div class="vacation-row">
+                <select class="v-type focusable">
+                    <option value="paid">Վճարովի արձակուրդ</option>
+                    <option value="unpaid">Իր հաշվին (չվճարվող)</option>
+                </select>
+                <input type="date" class="v-date focusable">
+                <input type="number" class="v-days focusable" placeholder="Քանի՞ օր" min="0.5" step="0.5" style="width: 110px;">
+                <button type="button" class="btn-remove-row" onclick="removeVacationRow(this)">✕</button>
+            </div>
+        `;
+    }
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            const activeElement = document.activeElement;
+            if (activeElement && activeElement.id === 'searchInput') return;
+
+            if (activeElement && activeElement.classList.contains('focusable')) {
+                event.preventDefault();
+                const focusables = Array.from(document.querySelectorAll('.focusable'));
+                const currentIndex = focusables.indexOf(activeElement);
+
+                if (currentIndex >= 0 && currentIndex < focusables.length - 1) {
+                    focusables[currentIndex + 1].focus();
+                    if (focusables[currentIndex + 1].tagName === 'INPUT') {
+                        focusables[currentIndex + 1].select();
+                    }
+                } else if (currentIndex === focusables.length - 1) {
+                    addEmployee();
+                    if (focusables.length > 0) {
+                        focusables[0].focus();
+                    }
+                }
+            }
+        }
+    });
+
+    function addVacationRow() {
+        const container = document.getElementById('vacationContainer');
+        const row = document.createElement('div');
+        row.className = 'vacation-row';
+        row.innerHTML = `
+            <select class="v-type focusable">
+                <option value="paid">Վճարովի արձակուրդ</option>
+                <option value="unpaid">Իր հաշվին (չվճարվող)</option>
+            </select>
+            <input type="date" class="v-date focusable">
+            <input type="number" class="v-days focusable" placeholder="Քանի՞ օր" min="0.5" step="0.5" style="width: 110px;">
+            <button type="button" class="btn-remove-row" onclick="removeVacationRow(this)">✕</button>
+        `;
+        container.appendChild(row);
+    }
+
+    function removeVacationRow(btn) {
+        const rows = document.querySelectorAll('.vacation-row');
+        if (rows.length > 1) {
+            btn.parentElement.remove();
+        } else {
+            alert("Առնվազն մեկ տող պետք է մնա:");
+        }
+    }
+
+    function addEmployee() {
+        const code = document.getElementById('empCode').value || "0001";
+        const name = document.getElementById('empName').value || "Անուն Ազգանուն";
+        const startDateVal = document.getElementById('startDate').value;
+        const calcDateVal = document.getElementById('calcDate').value;
+        const scheduleType = document.getElementById('workSchedule').value; 
+        const baseDays = parseFloat(scheduleType);
+        const extraDays = parseFloat(document.getElementById('extraDays').value) || 0;
+        const totalAnnualRate = baseDays + extraDays;
+        const salary = parseFloat(document.getElementById('salary').value) || 0;
+
+        if (!startDateVal || !calcDateVal) {
+            alert("Խնդրում ենք լրացնել ընդունման և հաշվարկման ամսաթվերը:");
+            return;
+        }
+
+        const start = new Date(startDateVal);
+        const calc = new Date(calcDateVal);
+
+        if (calc < start) {
+            alert("Հաշվարկման ամսաթիվը չի կարող լինել ընդունման ամսաթվից շուտ:");
+            return;
+        }
+
+        const vTypes = document.querySelectorAll('.v-type');
+        const vDates = document.querySelectorAll('.v-date');
+        const vDays = document.querySelectorAll('.v-days');
+        
+        let totalPaidUsed = 0;
+        let totalUnpaidDays = 0;
+        let vacationHistory = [];
+
+        for (let i = 0; i < vDates.length; i++) {
+            const typeVal = vTypes[i].value;
+            const dateVal = vDates[i].value;
+            const daysVal = parseFloat(vDays[i].value) || 0;
+
+            if (daysVal > 0) {
+                if (typeVal === 'paid') {
+                    totalPaidUsed += daysVal;
+                } else {
+                    totalUnpaidDays += daysVal;
+                }
+                vacationHistory.push({ type: typeVal, date: dateVal || "Անհայտ", days: daysVal });
+            }
+        }
+
+        const diffTime = calc - start;
+        const totalDaysCalendar = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+        let months = (calc.getFullYear() - start.getFullYear()) * 12 + (calc.getMonth() - start.getMonth());
+        let tempDate = new Date(start);
+        tempDate.setMonth(tempDate.getMonth() + months);
+
+        if (tempDate > calc) {
+            months--;
+            tempDate = new Date(start);
+            tempDate.setMonth(tempDate.getMonth() + months);
+        }
+
+        let remainingDayDiff = Math.floor((calc - tempDate) / (1000 * 60 * 60 * 24)) + 1;
+
+        const monthlyAccrualRate = totalAnnualRate / 12;
+        let accruedVacation = (months * monthlyAccrualRate) + (remainingDayDiff * (monthlyAccrualRate / 30.4375));
+
+        const totalAllUsed = totalPaidUsed + totalUnpaidDays;
+        let remainingDays = accruedVacation - totalAllUsed;
+        
+        if (Math.abs(remainingDays - Math.round(remainingDays)) < 0.05) {
+            remainingDays = Math.round(remainingDays);
+            accruedVacation = remainingDays + totalAllUsed;
+        } else {
+            remainingDays = parseFloat(remainingDays.toFixed(2));
+            accruedVacation = parseFloat(accruedVacation.toFixed(2));
+        }
+
+        // ----------------- ՃՇԳՐԻՏ ՏԱՐԵԿԱՆ ԲԱՇԽՈՒՄ -----------------
+        let yearPeriods = [];
+        let tempStart = new Date(start);
+        let remUsed = totalAllUsed;
+        let hasExpiredRisk = false;
+
+        while (tempStart < calc) {
+            let nextYearStart = new Date(tempStart);
+            nextYearStart.setFullYear(nextYearStart.getFullYear() + 1);
+
+            let yearStartLabel = `${tempStart.getFullYear()}-${nextYearStart.getFullYear()} (${formatDate(tempStart)})`;
+            
+            // EDATE(GY, 30)
+            let deadlineDate = addMonths(tempStart, 30);
+            let deadlineLabel = formatDate(deadlineDate);
+
+            let daysInThisYear = totalAnnualRate;
+            if (nextYearStart > calc) {
+                // Վերջին ընթացիկ տարին՝ ներառյալ տասնորդական օրերը
+                let fullMonthsThisYear = (calc.getFullYear() - tempStart.getFullYear()) * 12 + (calc.getMonth() - tempStart.getMonth());
+                let remDays = Math.floor((calc - tempDate) / (1000 * 60 * 60 * 24)) + 1;
+                daysInThisYear = (fullMonthsThisYear * monthlyAccrualRate) + (remDays * (monthlyAccrualRate / 30.4375));
+            }
+
+            let usedInThisYear = 0;
+            if (remUsed >= daysInThisYear) {
+                usedInThisYear = daysInThisYear;
+                remUsed -= daysInThisYear;
+            } else {
+                usedInThisYear = remUsed;
+                remUsed = 0;
+            }
+
+            let yearRemaining = daysInThisYear - usedInThisYear;
+            if (yearRemaining < 0) yearRemaining = 0;
+            yearRemaining = parseFloat(yearRemaining.toFixed(2));
+
+            let isExpired = (calc > deadlineDate) && (yearRemaining > 0);
+            if (isExpired) hasExpiredRisk = true;
+
+            yearPeriods.push({
+                startLabel: yearStartLabel,
+                remaining: yearRemaining,
+                deadline: deadlineLabel,
+                isExpired: isExpired
+            });
+
+            tempStart = nextYearStart;
+        }
+
+        // Ճշգրտում, որպեսզի վերջին տարիների գումարը EXACT հավասարվի ընդհանուր remainingDays-ին
+        let sumPeriods = yearPeriods.reduce((acc, curr) => acc + curr.remaining, 0);
+        let diffSum = parseFloat((remainingDays - sumPeriods).toFixed(2));
+        if (Math.abs(diffSum) > 0 && yearPeriods.length > 0) {
+            yearPeriods[yearPeriods.length - 1].remaining = parseFloat((yearPeriods[yearPeriods.length - 1].remaining + diffSum).toFixed(2));
+        }
+        // -----------------------------------------------------------
+
+        const divisor = scheduleType === "20" ? 21 : 25;
+        const dailySalary = salary > 0 ? (salary / divisor) : 0;
+        const reserveAmount = parseFloat((remainingDays * dailySalary).toFixed(2));
+
+        const maxAllowedAccumulated = totalAnnualRate * 2.5;
+        const isRisk = remainingDays >= maxAllowedAccumulated || hasExpiredRisk;
+
+        const employee = {
+            id: Date.now() + Math.random(),
+            code,
+            name,
+            startDate: startDateVal,
+            calcDate: calcDateVal,
+            effectiveDays: totalDaysCalendar,
+            accrued: accruedVacation,
+            usedTotal: totalPaidUsed.toFixed(2),
+            unpaidTotal: totalUnpaidDays,
+            history: vacationHistory,
+            remaining: remainingDays,
+            salary,
+            scheduleType,
+            reserveAmount: reserveAmount,
+            yearPeriods: yearPeriods,
+            isRisk
+        };
+
+        employeeList.push(employee);
+        renderTable();
+        showAlert(employee);
+    }
+
+    function deleteEmployee(id) {
+        employeeList = employeeList.filter(emp => emp.id !== id);
+        renderTable();
+        document.getElementById('alertBox').style.display = 'none';
+    }
+
+    function showAlert(emp) {
+        const alertBox = document.getElementById('alertBox');
+        alertBox.style.display = 'block';
+
+        let reserveText = emp.reserveAmount > 0 ? ` (Պահուստ/Վերջնահաշվարկ՝ <b>${formatMoney(emp.reserveAmount)} AMD</b>)` : '';
+
+        if (emp.isRisk) {
+            alertBox.className = 'alert-box alert-warning';
+            alertBox.innerHTML = `⚠️ <b>ՈՒՇԱԴՐՈՒԹՅՈՒՆ (ՕՐԵՆՍԴՐԱԿԱՆ ՌԻՍԿ)․</b> ${emp.name}-ի չօգտագործված արձակուրդը կազմում է <b>${emp.remaining} օր</b>${reserveText}։ Առկա է ժամկետանց արձակուրդի կամ տույժի ռիսկ (2.5 տարվա սահմանափակում)։`;
+        } else {
+            alertBox.className = 'alert-box alert-success';
+            alertBox.innerHTML = `✅ ${emp.name}-ի արձակուրդային մնացորդը կազմում է <b>${emp.remaining} օր</b>${reserveText}։`;
+        }
+    }
+
+    function renderTable() {
+        const tbody = document.querySelector('#empTable tbody');
+        tbody.innerHTML = '';
+
+        employeeList.forEach(emp => {
+            let historyHTML = `<b>${emp.usedTotal} օր (վճարովի)</b><br>`;
+            if (emp.history.length > 0) {
+                emp.history.forEach(h => {
+                    const tagClass = h.type === 'unpaid' ? 'history-tag tag-unpaid' : 'history-tag';
+                    const typeLabel = h.type === 'unpaid' ? 'Իր հաշվին' : 'Վճարովի';
+                    historyHTML += `<span class="${tagClass}">📅 ${h.date} — <b>${h.days} օր</b> (${typeLabel})</span>`;
+                });
+            }
+
+            // Վերցնում ենք վերջին 3 տարիները
+            let activeYears = emp.yearPeriods.slice(-3);
+            while (activeYears.length < 3) {
+                activeYears.unshift({ startLabel: "-", remaining: "-", deadline: "-", isExpired: false });
+            }
+
+            let y1 = activeYears[0];
+            let y2 = activeYears[1];
+            let y3 = activeYears[2];
+
+            const reserveDisplay = emp.reserveAmount > 0 ? `${formatMoney(emp.reserveAmount)} AMD` : '-';
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${emp.code}</td>
+                <td><b>${emp.name}</b></td>
+                <td>${emp.startDate}</td>
+                <td>${emp.effectiveDays} օր</td>
+                <td>Կուտ․ <b>${emp.accrued}</b><br>${historyHTML}</td>
+                <td><b>${emp.remaining}</b></td>
+                
+                <!-- 1-ին Փուլ -->
+                <td>${y1.startLabel}</td>
+                <td class="${y1.isExpired ? 'expired-cell' : ''}"><b>${y1.remaining}</b></td>
+                <td class="${y1.isExpired ? 'expired-cell' : ''}">${y1.deadline}</td>
+
+                <!-- 2-րդ Փուլ -->
+                <td>${y2.startLabel}</td>
+                <td class="${y2.isExpired ? 'expired-cell' : ''}"><b>${y2.remaining}</b></td>
+                <td class="${y2.isExpired ? 'expired-cell' : ''}">${y2.deadline}</td>
+
+                <!-- 3-րդ Փուլ -->
+                <td>${y3.startLabel}</td>
+                <td class="${y3.isExpired ? 'expired-cell' : ''}"><b>${y3.remaining}</b></td>
+                <td class="${y3.isExpired ? 'expired-cell' : ''}">${y3.deadline}</td>
+
+                <td><b>${reserveDisplay}</b></td>
+                <td>
+                    ${emp.isRisk 
+                        ? '<span class="badge-danger">Ռիսկային</span>' 
+                        : '<span class="badge-success">Նորմալ</span>'}
+                </td>
+                <td>
+                    <button class="btn-delete" onclick="deleteEmployee(${emp.id})">Ջնջել</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function filterTable() {
+        const filter = document.getElementById('searchInput').value.toLowerCase();
+        const rows = document.querySelectorAll('#empTable tbody tr');
+
+        rows.forEach(row => {
+            const code = row.cells[0].textContent.toLowerCase();
+            const name = row.cells[1].textContent.toLowerCase();
+            if (code.includes(filter) || name.includes(filter)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    function downloadTemplate() {
+        const templateData = [
+            ["Տաբելային համար", "Ազգանուն, անուն", "Ընդունման ամսաթիվ (ՕՕ.ԱԱ.ՏՏՏՏ)", "Աշխատանքային ռեժիմ (5 կամ 6)", "Միջին աշխատավարձ (AMD)", "Օգտագործված վճարովի օրեր", "Իր հաշվին (չվճարվող) օրեր", "Հաշվարկման ամսաթիվ (ՕՕ.ԱԱ.ՏՏՏՏ)"],
+            ["0001", "Պողոսյան Պողոս", "01.02.2020", "5-օրյա", "200000", "20", "0", "31.12.2025"],
+            ["0002", "Գայանե Մարտիրոսյան", "01.02.2015", "6-օրյա", "732659.70", "216", "4", "31.12.2025"]
+        ];
+
+        const worksheet = XLSX.utils.aoa_to_sheet(templateData);
+        worksheet['!cols'] = [
+            { wch: 18 }, { wch: 25 }, { wch: 28 }, { wch: 28 }, { wch: 25 }, { wch: 25 }, { wch: 25 }, { wch: 28 }
+        ];
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Ձևանմուշ");
+        XLSX.writeFile(workbook, "Ardakurdner_Dzevanmush.xlsx");
+    }
+
+    function exportToExcel() {
+        if (employeeList.length === 0) {
+            alert("Ցուցակը դատարկ է:");
+            return;
+        }
+
+        const excelData = [
+            [
+                "Հ/Հ", "Տաբելային համար", "Ազգանուն, անուն", "Ընդունման ամսաթիվ", "Հաշվարկման ամսաթիվ",
+                "Ստաժ (օր)", "Կուտակված", "Օգտագործված", "Մնացորդ (օր)",
+                "Աշխատանքային տարի 1", "Օրերի քանակ", "Արձակուրդի սկզբի վերջնաժամկետ",
+                "Աշխատանքային տարի 2", "Օրերի քանակ", "Արձակուրդի սկզբի վերջնաժամկետ",
+                "Աշխատանքային տարի 3", "Օրերի քանակ", "Արձակուրդի սկզբի վերջնաժամկետ",
+                "Միջին աշխատավարձ (AMD)", "Պահուստ / Վերջնահաշվարկ (AMD)"
+            ]
+        ];
+
+        employeeList.forEach((emp, index) => {
+            const formattedStart = emp.startDate.split('-').reverse().join('.') + "թ.";
+            const formattedCalc = emp.calcDate.split('-').reverse().join('.') + "թ.";
+
+            let activeYears = emp.yearPeriods.slice(-3);
+            while (activeYears.length < 3) {
+                activeYears.unshift({ startLabel: "", remaining: "", deadline: "" });
+            }
+
+            let y1 = activeYears[0];
+            let y2 = activeYears[1];
+            let y3 = activeYears[2];
+
+            excelData.push([
+                index + 1,
+                emp.code,
+                emp.name,
+                formattedStart,
+                formattedCalc,
+                emp.effectiveDays,
+                parseFloat(emp.accrued),
+                parseFloat(emp.usedTotal),
+                parseFloat(emp.remaining),
+                y1.startLabel, y1.remaining, y1.deadline,
+                y2.startLabel, y2.remaining, y2.deadline,
+                y3.startLabel, y3.remaining, y3.deadline,
+                emp.salary,
+                emp.reserveAmount
+            ]);
+        });
+
+        const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+        worksheet['!cols'] = [
+            { wch: 6 }, { wch: 16 }, { wch: 22 }, { wch: 18 }, { wch: 18 },
+            { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+            { wch: 25 }, { wch: 12 }, { wch: 28 },
+            { wch: 25 }, { wch: 12 }, { wch: 28 },
+            { wch: 25 }, { wch: 12 }, { wch: 28 },
+            { wch: 20 }, { wch: 25 }
+        ];
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Արձակուրդների Հաշվարկ");
+        XLSX.writeFile(workbook, "Ardakurdner_Ev_Pahustafond.xlsx");
+    }
+
+    function importFromExcel(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            const data = new Uint8Array(evt.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+            let importedCount = 0;
+
+            for (let i = 1; i < jsonData.length; i++) {
+                const row = jsonData[i];
+                if (row && row.length >= 3 && row[1]) {
+                    let isHasNo = typeof row[0] === 'number';
+                    let code = String(row[isHasNo ? 1 : 0] || `000${i}`);
+                    let name = row[isHasNo ? 2 : 1] || "Անհայտ";
+                    let startDateVal = row[isHasNo ? 3 : 2];
+                    let scheduleVal = String(row[isHasNo ? 4 : 3] || "5");
+                    let salaryVal = parseFloat(row[isHasNo ? 5 : 4]) || 0;
+                    let paidUsedVal = parseFloat(row[isHasNo ? 6 : 5]) || 0;
+                    let unpaidUsedVal = parseFloat(row[isHasNo ? 7 : 6]) || 0;
+                    let calcDateVal = row[isHasNo ? 8 : 7];
+
+                    function parseDate(val) {
+                        if (!val) return document.getElementById('calcDate').value;
+                        if (typeof val === 'number') {
+                            const d = XLSX.SSF.parse_date_code(val);
+                            return `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`;
+                        }
+                        if (typeof val === 'string' && val.includes('.')) {
+                            const p = val.replace('թ.', '').trim().split('.');
+                            if (p.length === 3) return `${p[2]}-${p[1]}-${p[0]}`;
+                        }
+                        return val;
+                    }
+
+                    startDateVal = parseDate(startDateVal);
+                    calcDateVal = parseDate(calcDateVal);
+
+                    let detectedSchedule = scheduleVal.includes("6") || scheduleVal.includes("24") ? "24" : "20";
+
+                    document.getElementById('empCode').value = code;
+                    document.getElementById('empName').value = name;
+                    document.getElementById('startDate').value = startDateVal;
+                    document.getElementById('calcDate').value = calcDateVal;
+                    document.getElementById('salary').value = salaryVal || '';
+                    document.getElementById('workSchedule').value = detectedSchedule;
+
+                    const vacationContainer = document.getElementById('vacationContainer');
+                    vacationContainer.innerHTML = ''; 
+
+                    if (paidUsedVal > 0) {
+                        const rowPaid = document.createElement('div');
+                        rowPaid.className = 'vacation-row';
+                        rowPaid.innerHTML = `
+                            <select class="v-type focusable"><option value="paid" selected>Վճարովի արձակուրդ</option></select>
+                            <input type="date" class="v-date focusable" value="${calcDateVal}">
+                            <input type="number" class="v-days focusable" value="${paidUsedVal}">
+                        `;
+                        vacationContainer.appendChild(rowPaid);
+                    }
+
+                    if (unpaidUsedVal > 0) {
+                        const rowUnpaid = document.createElement('div');
+                        rowUnpaid.className = 'vacation-row';
+                        rowUnpaid.innerHTML = `
+                            <select class="v-type focusable"><option value="unpaid" selected>Իր հաշվին (չվճարվող)</option></select>
+                            <input type="date" class="v-date focusable" value="${calcDateVal}">
+                            <input type="number" class="v-days focusable" value="${unpaidUsedVal}">
+                        `;
+                        vacationContainer.appendChild(rowUnpaid);
+                    }
+
+                    if (paidUsedVal === 0 && unpaidUsedVal === 0) {
+                        resetVacationRows();
+                    }
+
+                    addEmployee();
+                    importedCount++;
+                }
+            }
+            
+            clearInputs();
+
+            e.target.value = '';
+            alert(`Հաջողությամբ ներմուծվեց ${importedCount} աշխատակից:`);
+        };
+        reader.readAsBuffer ? reader.readAsBuffer(file) : reader.readAsArrayBuffer(file);
+    }
+</script>
+
+</body>
+</html>
