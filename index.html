@@ -333,7 +333,7 @@
             accruedVacation = parseFloat(accruedVacation.toFixed(2));
         }
 
-        // ----------------- ՃՇԳՐԻՏ ՏԱՐԵԿԱՆ ԲԱՇԽՈՒՄ -----------------
+        // ----------------- ՏԱՐԵԿԱՆ ԲԱՇԽՈՒՄ -----------------
         let yearPeriods = [];
         let tempStart = new Date(start);
         let remUsed = totalAllUsed;
@@ -345,13 +345,11 @@
 
             let yearStartLabel = `${tempStart.getFullYear()}-${nextYearStart.getFullYear()} (${formatDate(tempStart)})`;
             
-            // EDATE(GY, 30)
             let deadlineDate = addMonths(tempStart, 30);
             let deadlineLabel = formatDate(deadlineDate);
 
             let daysInThisYear = totalAnnualRate;
             if (nextYearStart > calc) {
-                // Վերջին ընթացիկ տարին՝ ներառյալ տասնորդական օրերը
                 let fullMonthsThisYear = (calc.getFullYear() - tempStart.getFullYear()) * 12 + (calc.getMonth() - tempStart.getMonth());
                 let remDays = Math.floor((calc - tempDate) / (1000 * 60 * 60 * 24)) + 1;
                 daysInThisYear = (fullMonthsThisYear * monthlyAccrualRate) + (remDays * (monthlyAccrualRate / 30.4375));
@@ -383,7 +381,6 @@
             tempStart = nextYearStart;
         }
 
-        // Ճշգրտում, որպեսզի վերջին տարիների գումարը EXACT հավասարվի ընդհանուր remainingDays-ին
         let sumPeriods = yearPeriods.reduce((acc, curr) => acc + curr.remaining, 0);
         let diffSum = parseFloat((remainingDays - sumPeriods).toFixed(2));
         if (Math.abs(diffSum) > 0 && yearPeriods.length > 0) {
@@ -457,7 +454,6 @@
                 });
             }
 
-            // Վերցնում ենք վերջին 3 տարիները
             let activeYears = emp.yearPeriods.slice(-3);
             while (activeYears.length < 3) {
                 activeYears.unshift({ startLabel: "-", remaining: "-", deadline: "-", isExpired: false });
@@ -522,11 +518,19 @@
         });
     }
 
+    // EXCEL ՁԵՎԱՆՄՈՒՇԻ ՆԵՐԲԵՌՆՈՒՄ — ՄԻԱՅՆ ՎԵՐՆԱԳՐԵՐՈՎ (ԴԱՏԱՐԿ)
     function downloadTemplate() {
         const templateData = [
-            ["Տաբելային համար", "Ազգանուն, անուն", "Ընդունման ամսաթիվ (ՕՕ.ԱԱ.ՏՏՏՏ)", "Աշխատանքային ռեժիմ (5 կամ 6)", "Միջին աշխատավարձ (AMD)", "Օգտագործված վճարովի օրեր", "Իր հաշվին (չվճարվող) օրեր", "Հաշվարկման ամսաթիվ (ՕՕ.ԱԱ.ՏՏՏՏ)"],
-            ["0001", "Պողոսյան Պողոս", "01.02.2020", "5-օրյա", "200000", "20", "0", "31.12.2025"],
-            ["0002", "Գայանե Մարտիրոսյան", "01.02.2015", "6-օրյա", "732659.70", "216", "4", "31.12.2025"]
+            [
+                "Տաբելային համար", 
+                "Ազգանուն, անուն", 
+                "Ընդունման ամսաթիվ (ՕՕ.ԱԱ.ՏՏՏՏ)", 
+                "Աշխատանքային ռեժիմ (5 կամ 6)", 
+                "Միջին աշխատավարձ (AMD)", 
+                "Օգտագործված վճարովի օրեր", 
+                "Իր հաշվին (չվճարվող) օրեր", 
+                "Հաշվարկման ամսաթիվ (ՕՕ.ԱԱ.ՏՏՏՏ)"
+            ]
         ];
 
         const worksheet = XLSX.utils.aoa_to_sheet(templateData);
@@ -536,7 +540,9 @@
 
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Ձևանմուշ");
-        XLSX.writeFile(workbook, "Ardakurdner_Dzevanmush.xlsx");
+        
+        // Հայերեն անունով ֆայլ
+        XLSX.writeFile(workbook, "Արձակուրդների_Ձևանմուշ.xlsx");
     }
 
     function exportToExcel() {
@@ -599,7 +605,9 @@
 
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Արձակուրդների Հաշվարկ");
-        XLSX.writeFile(workbook, "Ardakurdner_Ev_Pahustafond.xlsx");
+        
+        // Հայերեն անունով ֆայլ
+        XLSX.writeFile(workbook, "Արձակուրդների_և_Պահուստաֆոնդի_Հաշվարկ.xlsx");
     }
 
     function importFromExcel(e) {
