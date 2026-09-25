@@ -518,7 +518,7 @@
         });
     }
 
-    // EXCEL ՁԵՎԱՆՄՈՒՇԻ ՆԵՐԲԵՌՆՈՒՄ — ՄԻԱՅՆ ՎԵՐՆԱԳՐԵՐՈՎ (ԴԱՏԱՐԿ)
+    // EXCEL ՁԵՎԱՆՄՈՒՇԻ ՆԵՐԲԵՌՆՈՒՄ — ՄԻԱՅՆ ՎԵՐՆԱԳՐԵՐՈՎ (ԼՐԻՎ ԴԱՏԱՐԿ)
     function downloadTemplate() {
         const templateData = [
             [
@@ -541,7 +541,6 @@
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Ձևանմուշ");
         
-        // Հայերեն անունով ֆայլ
         XLSX.writeFile(workbook, "Արձակուրդների_Ձևանմուշ.xlsx");
     }
 
@@ -606,7 +605,6 @@
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Արձակուրդների Հաշվարկ");
         
-        // Հայերեն անունով ֆայլ
         XLSX.writeFile(workbook, "Արձակուրդների_և_Պահուստաֆոնդի_Հաշվարկ.xlsx");
     }
 
