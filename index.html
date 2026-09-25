@@ -30,7 +30,7 @@
         .btn-import:hover { background-color: #5a6268; }
         .btn-delete { background-color: #dc3545; color: white; padding: 4px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; }
         
-        .alert-box { margin-top: 15px; padding: 12px; border-radius: 5px; display: none; font-weight: bold; font-size: 13px; }
+        .alert-box { margin-top: 15px; padding: 12px; border-radius: 5px; display: none; font-weight: bold; font-size: 13px; line-height: 1.5; }
         .alert-warning { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .search-box { margin-top: 15px; display: flex; justify-content: flex-end; }
@@ -109,7 +109,7 @@
     </div>
 
     <div class="btn-group">
-        <button class="action-btn btn-add" id="btnAddEmp" onclick="addEmployee()">Հաշվարկել և Ավելացնել</button>
+        <button class="action-btn btn-add" id="btnAddEmp" onclick="addSingleEmployee()">Հաշվարկել և Ավելացնել</button>
         <button class="action-btn btn-template" onclick="downloadTemplate()">📥 Ներբեռնել Excel Ձևանմուշ</button>
         <button class="action-btn btn-export" onclick="exportToExcel()">📊 Արտահանել Հաշվարկը</button>
         <button class="action-btn btn-import" onclick="document.getElementById('importFile').click()">📤 Ներմուծել Excel-ից</button>
@@ -223,7 +223,7 @@
                         focusables[currentIndex + 1].select();
                     }
                 } else if (currentIndex === focusables.length - 1) {
-                    addEmployee();
+                    addSingleEmployee();
                     if (focusables.length > 0) {
                         focusables[0].focus();
                     }
@@ -257,7 +257,7 @@
         }
     }
 
-    function addEmployee() {
+    function calculateEmployeeData() {
         const code = document.getElementById('empCode').value || "0001";
         const name = document.getElementById('empName').value || "Անուն Ազգանուն";
         const startDateVal = document.getElementById('startDate').value;
@@ -269,16 +269,14 @@
         const salary = parseFloat(document.getElementById('salary').value) || 0;
 
         if (!startDateVal || !calcDateVal) {
-            alert("Խնդրում ենք լրացնել ընդունման և հաշվարկման ամսաթվերը:");
-            return;
+            return null;
         }
 
         const start = new Date(startDateVal);
         const calc = new Date(calcDateVal);
 
         if (calc < start) {
-            alert("Հաշվարկման ամսաթիվը չի կարող լինել ընդունման ամսաթվից շուտ:");
-            return;
+            return null;
         }
 
         const vTypes = document.querySelectorAll('.v-type');
@@ -333,7 +331,6 @@
             accruedVacation = parseFloat(accruedVacation.toFixed(2));
         }
 
-        // ----------------- ՏԱՐԵԿԱՆ ԲԱՇԽՈՒՄ -----------------
         let yearPeriods = [];
         let tempStart = new Date(start);
         let remUsed = totalAllUsed;
@@ -386,7 +383,6 @@
         if (Math.abs(diffSum) > 0 && yearPeriods.length > 0) {
             yearPeriods[yearPeriods.length - 1].remaining = parseFloat((yearPeriods[yearPeriods.length - 1].remaining + diffSum).toFixed(2));
         }
-        // -----------------------------------------------------------
 
         const divisor = scheduleType === "20" ? 21 : 25;
         const dailySalary = salary > 0 ? (salary / divisor) : 0;
@@ -395,7 +391,7 @@
         const maxAllowedAccumulated = totalAnnualRate * 2.5;
         const isRisk = remainingDays >= maxAllowedAccumulated || hasExpiredRisk;
 
-        const employee = {
+        return {
             id: Date.now() + Math.random(),
             code,
             name,
@@ -413,30 +409,56 @@
             yearPeriods: yearPeriods,
             isRisk
         };
+    }
 
-        employeeList.push(employee);
+    function addSingleEmployee() {
+        const emp = calculateEmployeeData();
+        if (!emp) {
+            alert("Խնդրում ենք լրացնել ընդունման և հաշվարկման ճիշտ ամսաթվերը:");
+            return;
+        }
+        employeeList.push(emp);
         renderTable();
-        showAlert(employee);
+        showSummaryAlert([emp]);
     }
 
     function deleteEmployee(id) {
         employeeList = employeeList.filter(emp => emp.id !== id);
         renderTable();
-        document.getElementById('alertBox').style.display = 'none';
+        if (employeeList.length > 0) {
+            showSummaryAlert(employeeList);
+        } else {
+            document.getElementById('alertBox').style.display = 'none';
+        }
     }
 
-    function showAlert(emp) {
+    // ԽՄԲԱՔԱՆԱԿԱՅԻՆ / ՆԵՐՄՈՒԾՄԱՆ ԾԱՆՈՒՑՄԱՆ ՖՈՒՆԿՑԻԱ
+    function showSummaryAlert(addedList) {
         const alertBox = document.getElementById('alertBox');
         alertBox.style.display = 'block';
 
-        let reserveText = emp.reserveAmount > 0 ? ` (Պահուստ/Վերջնահաշվարկ՝ <b>${formatMoney(emp.reserveAmount)} AMD</b>)` : '';
+        const riskEmps = addedList.filter(e => e.isRisk);
 
-        if (emp.isRisk) {
+        if (riskEmps.length > 0) {
             alertBox.className = 'alert-box alert-warning';
-            alertBox.innerHTML = `⚠️ <b>ՈՒՇԱԴՐՈՒԹՅՈՒՆ (ՕՐԵՆՍԴՐԱԿԱՆ ՌԻՍԿ)․</b> ${emp.name}-ի չօգտագործված արձակուրդը կազմում է <b>${emp.remaining} օր</b>${reserveText}։ Առկա է ժամկետանց արձակուրդի կամ տույժի ռիսկ (2.5 տարվա սահմանափակում)։`;
+            let html = `⚠️ <b>ՈՒՇԱԴՐՈՒԹՅՈՒՆ (ՕՐԵՆՍԴՐԱԿԱՆ ՌԻՍԿ)․</b> Հետևյալ աշխատակիցներն ունեն ժամկետանց արձակուրդ կամ գերազանցված մնացորդ (2.5 տարվա սահմանափակում)․<br><ul style="margin: 5px 0 0 20px; padding: 0;">`;
+            
+            riskEmps.forEach(e => {
+                let reserveText = e.reserveAmount > 0 ? ` (Պահուստ/Վերջնահաշվարկ՝ <b>${formatMoney(e.reserveAmount)} AMD</b>)` : '';
+                html += `<li><b>${e.name}</b> — մնացորդ՝ <b>${e.remaining} օր</b>${reserveText}</li>`;
+            });
+            
+            html += `</ul>`;
+            alertBox.innerHTML = html;
         } else {
             alertBox.className = 'alert-box alert-success';
-            alertBox.innerHTML = `✅ ${emp.name}-ի արձակուրդային մնացորդը կազմում է <b>${emp.remaining} օր</b>${reserveText}։`;
+            if (addedList.length === 1) {
+                let emp = addedList[0];
+                let reserveText = emp.reserveAmount > 0 ? ` (Պահուստ/Վերջնահաշվարկ՝ <b>${formatMoney(emp.reserveAmount)} AMD</b>)` : '';
+                alertBox.innerHTML = `✅ <b>${emp.name}</b>-ի արձակուրդային մնացորդը կազմում է <b>${emp.remaining} օր</b>${reserveText}։ Ռիսկեր առկա չեն։`;
+            } else {
+                alertBox.innerHTML = `✅ Ներմուծված բոլոր <b>${addedList.length}</b> աշխատակիցների արձակուրդային մնացորդները գտնվում են նորմայի սահմաններում (ռիսկային աշխատակիցներ չկան)։`;
+            }
         }
     }
 
@@ -518,7 +540,6 @@
         });
     }
 
-    // EXCEL ՁԵՎԱՆՄՈՒՇԻ ՆԵՐԲԵՌՆՈՒՄ — ՄԻԱՅՆ ՎԵՐՆԱԳՐԵՐՈՎ (ԼՐԻՎ ԴԱՏԱՐԿ)
     function downloadTemplate() {
         const templateData = [
             [
@@ -619,7 +640,7 @@
             const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
             const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
 
-            let importedCount = 0;
+            let newImportedEmps = [];
 
             for (let i = 1; i < jsonData.length; i++) {
                 const row = jsonData[i];
@@ -688,15 +709,19 @@
                         resetVacationRows();
                     }
 
-                    addEmployee();
-                    importedCount++;
+                    const emp = calculateEmployeeData();
+                    if (emp) {
+                        employeeList.push(emp);
+                        newImportedEmps.push(emp);
+                    }
                 }
             }
             
+            renderTable();
             clearInputs();
+            showSummaryAlert(newImportedEmps);
 
             e.target.value = '';
-            alert(`Հաջողությամբ ներմուծվեց ${importedCount} աշխատակից:`);
         };
         reader.readAsBuffer ? reader.readAsBuffer(file) : reader.readAsArrayBuffer(file);
     }
