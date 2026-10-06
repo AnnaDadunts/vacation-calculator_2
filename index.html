@@ -786,9 +786,25 @@
                         type = 'schedule_change';
                     }
 
-                    const date = row[2] ? parseArmenianDate(row[2]) : "Անհայտ";
-                    const endDate = row[3] ? parseArmenianDate(row[3]) : "";
-                    const days = parseFloat(row[4] || row[3]) || 0;
+const date = row[2] ? parseArmenianDate(row[2]) : "Անհայտ";
+                
+                let endDate = "";
+                let days = 0;
+
+                // Եթե 4-րդ սյունակում (row[3]) ամսաթիվ է, վերցնում ենք որպես վերջնաժամկետ (endDate)
+                if (row[3] !== undefined && row[3] !== null && row[3] !== "") {
+                    let parsedEnd = parseArmenianDate(row[3]);
+                    if (parsedEnd && (parsedEnd.includes('-') || parsedEnd.includes('.'))) {
+                        endDate = parsedEnd;
+                    } else {
+                        days = parseFloat(row[3]) || 0;
+                    }
+                }
+
+                // Եթե 5-րդ սյունակում (row[4]) թիվ է, վերցնում ենք որպես օրերի քանակ
+                if (row[4] !== undefined && row[4] !== null && row[4] !== "") {
+                    days = parseFloat(row[4]) || days;
+                }
 
                     if (!historyMap[code]) historyMap[code] = [];
                     historyMap[code].push({ type, date, endDate, days });
