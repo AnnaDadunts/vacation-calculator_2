@@ -121,8 +121,8 @@
     <div class="btn-group">
         <button class="action-btn btn-add" id="btnAddEmp" onclick="saveEmployeeHandler()">➕ Հաշվարկել և Ավելացնել</button>
         <button class="action-btn btn-recalc" onclick="recalculateAllEmployees()">🔄 Վերահաշվարկել ԲՈԼՈՐԻՆ</button>
-        <button class="action-btn btn-template" onclick="downloadTemplate()">📥 Ներբեռնել Excel Ձևանմուշ (2 Էջ)</button>
-        <button class="action-btn btn-export" onclick="exportToExcel()">📊 Արտահանել Հաշվարկը (2 Էջ)</button>
+        <button class="action-btn btn-template" onclick="downloadTemplate()">📥 Ներբեռնել Excel Ձևանմուշ</button>
+        <button class="action-btn btn-export" onclick="exportToExcel()">📊 Արտահանել Հաշվարկը</button>
         <button class="action-btn btn-import" onclick="document.getElementById('importFile').click()">📤 Ներմուծել Excel-ից</button>
         <input type="file" id="importFile" accept=".xlsx, .xls" style="display: none;" onchange="importFromExcel(event)">
     </div>
@@ -967,7 +967,7 @@
         XLSX.utils.book_append_sheet(workbook, ws1, "Ամփոփ Հաշվարկ");
         XLSX.utils.book_append_sheet(workbook, ws2, "Արձակուրդների Պատմություն");
 
-        XLSX.writeFile(workbook, "Արձակուրդների_Հաշվարկ_Ոճավորված.xlsx");
+        XLSX.writeFile(workbook, "Արձակուրդների_Հաշվարկ.xlsx");
     }
 
     function downloadTemplate() {
