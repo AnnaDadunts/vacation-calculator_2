@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Արձակուրդների, Պահուստաֆոնդի և Ռիսկերի Հաշվիչ</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Ոճավորված Excel արտահանման համար -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; margin: 15px; background-color: #f4f6f9; }
         .container { max-width: 100%; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow-x: auto; }
@@ -17,37 +18,46 @@
         .vacation-row { display: flex; gap: 8px; margin-bottom: 6px; align-items: center; flex-wrap: wrap; }
         .btn-add-row { background-color: #17a2b8; color: white; padding: 5px 10px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer; margin-top: 4px; }
         .btn-remove-row { background-color: #dc3545; color: white; padding: 5px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; }
-        
+
         .btn-group { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
-        button.action-btn { flex: 1; padding: 10px; border: none; border-radius: 5px; font-size: 13px; font-weight: bold; cursor: pointer; min-width: 150px; }
+        button.action-btn { flex: 1; padding: 10px; border: none; border-radius: 5px; font-size: 13px; font-weight: bold; cursor: pointer; min-width: 140px; }
         .btn-add { background-color: #28a745; color: white; }
         .btn-add:hover { background-color: #218838; }
+        .btn-recalc { background-color: #fd7e14; color: white; }
+        .btn-recalc:hover { background-color: #e06d0b; }
         .btn-template { background-color: #ffc107; color: #212529; }
         .btn-template:hover { background-color: #e0a800; }
         .btn-export { background-color: #207245; color: white; }
         .btn-export:hover { background-color: #155231; }
         .btn-import { background-color: #6c757d; color: white; }
         .btn-import:hover { background-color: #5a6268; }
-        .btn-delete { background-color: #dc3545; color: white; padding: 4px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; }
         
+        .btn-edit { background-color: #0d6efd; color: white; padding: 4px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; margin-right: 4px; }
+        .btn-delete { background-color: #dc3545; color: white; padding: 4px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; }
+
         .alert-box { margin-top: 15px; padding: 12px; border-radius: 5px; display: none; font-weight: bold; font-size: 13px; line-height: 1.5; }
         .alert-warning { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .search-box { margin-top: 15px; display: flex; justify-content: flex-end; }
         .search-box input { width: 220px; }
-        
+
         .table-responsive { width: 100%; overflow-x: auto; margin-top: 15px; }
         table { width: 100%; border-collapse: collapse; white-space: nowrap; }
         th, td { border: 1px solid #dee2e6; padding: 7px 9px; text-align: center; font-size: 12px; }
-        th { background-color: #e9ecef; color: #495057; }
-        th.year-header { background-color: #d1ecf1; color: #0c5460; }
+        th { background-color: #343a40; color: #ffffff; }
+
+        th.year1-header, td.year1-cell { background-color: #e2efda; color: #000; }
+        th.year2-header, td.year2-cell { background-color: #deebf7; color: #000; }
+        th.year3-header, td.year3-cell { background-color: #e2dcd7; color: #000; }
+
         .badge-danger { background-color: #dc3545; color: white; padding: 3px 6px; border-radius: 4px; font-size: 10px; }
         .badge-success { background-color: #28a745; color: white; padding: 3px 6px; border-radius: 4px; font-size: 10px; }
         .history-tag { display: block; background: #fff; padding: 2px 4px; margin-bottom: 2px; border-radius: 3px; border: 1px solid #ccc; font-size: 10px; text-align: left; }
         .tag-unpaid { background-color: #fff3cd; border-color: #ffeeba; color: #856404; }
         .tag-childcare { background-color: #e2e3e5; border-color: #d6d8db; color: #383d41; }
         .tag-schedule { background-color: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
-        .expired-cell { background-color: #f8d7da; color: #721c24; font-weight: bold; }
+        .expired-cell { background-color: #f8d7da !important; color: #721c24 !important; font-weight: bold; }
+        .editing-row { background-color: #fff3cd !important; }
     </style>
 </head>
 <body>
@@ -60,17 +70,14 @@
             <label for="empCode">Տաբելային համար:</label>
             <input type="text" id="empCode" class="focusable" placeholder="օր․ 0001">
         </div>
-
         <div class="form-group">
             <label for="empName">Ազգանուն, Անուն:</label>
             <input type="text" id="empName" class="focusable" placeholder="օր․ Անուն Ազգանուն">
         </div>
-
         <div class="form-group">
             <label for="startDate">Ընդունման ամսաթիվ:</label>
             <input type="date" id="startDate" class="focusable">
         </div>
-
         <div class="form-group">
             <label for="workSchedule">Սկզբնական աշխատանքային ռեժիմ:</label>
             <select id="workSchedule" class="focusable">
@@ -78,17 +85,14 @@
                 <option value="24">6-օրյա (24 աշխ. օր/տարի, 25-ի բաժանումով)</option>
             </select>
         </div>
-
         <div class="form-group">
             <label for="extraDays">Լրացուցիչ արձակուրդ (օր/տարի):</label>
             <input type="number" id="extraDays" class="focusable" value="0" min="0" placeholder="օր․ 0, 4, 8">
         </div>
-
         <div class="form-group">
             <label for="salary">Միջին ամսական աշխատավարձ (AMD):</label>
             <input type="number" id="salary" class="focusable" placeholder="օր․ 200000" min="0" step="any">
         </div>
-
         <div class="form-group">
             <label for="calcDate">Որ օրվա դրությամբ հաշվարկել:</label>
             <input type="date" id="calcDate" class="focusable">
@@ -115,9 +119,10 @@
     </div>
 
     <div class="btn-group">
-        <button class="action-btn btn-add" id="btnAddEmp" onclick="addSingleEmployee()">Հաշվարկել և Ավելացնել</button>
+        <button class="action-btn btn-add" id="btnAddEmp" onclick="saveEmployeeHandler()">➕ Հաշվարկել և Ավելացնել</button>
+        <button class="action-btn btn-recalc" onclick="recalculateAllEmployees()">🔄 Վերահաշվարկել ԲՈԼՈՐԻՆ</button>
         <button class="action-btn btn-template" onclick="downloadTemplate()">📥 Ներբեռնել Excel Ձևանմուշ (2 Էջ)</button>
-        <button class="action-btn btn-export" onclick="exportToExcel()">📊 Արտահանել Հաշվարկը</button>
+        <button class="action-btn btn-export" onclick="exportToExcel()">📊 Արտահանել Հաշվարկը (2 Էջ)</button>
         <button class="action-btn btn-import" onclick="document.getElementById('importFile').click()">📤 Ներմուծել Excel-ից</button>
         <input type="file" id="importFile" accept=".xlsx, .xls" style="display: none;" onchange="importFromExcel(event)">
     </div>
@@ -138,29 +143,25 @@
                     <th>Ընդհանուր Ստաժ</th>
                     <th>Կուտակված / Օգտագործված</th>
                     <th>Ընդհանուր Մնացորդ</th>
-                    
-                    <!-- 1-ին Փուլ -->
-                    <th class="year-header">Աշխատանքային տարի</th>
-                    <th class="year-header">Օրերի քանակ</th>
-                    <th class="year-header">Արձակուրդի սկզբի վերջնաժամկետ</th>
 
-                    <!-- 2-րդ Փուլ -->
-                    <th class="year-header">Աշխատանքային տարի</th>
-                    <th class="year-header">Օրերի քանակ</th>
-                    <th class="year-header">Արձակուրդի սկզբի վերջնաժամկետ</th>
+                    <th class="year1-header">Աշխատանքային տարի 1</th>
+                    <th class="year1-header">Օրերի քանակ</th>
+                    <th class="year1-header">Արձակուրդի սկզբի վերջնաժամկետ</th>
 
-                    <!-- 3-րդ Փուլ -->
-                    <th class="year-header">Աշխատանքային տարի</th>
-                    <th class="year-header">Օրերի քանակ</th>
-                    <th class="year-header">Արձակուրդի սկզբի վերջնաժամկետ</th>
+                    <th class="year2-header">Աշխատանքային տարի 2</th>
+                    <th class="year2-header">Օրերի քանակ</th>
+                    <th class="year2-header">Արձակուրդի սկզբի վերջնաժամկետ</th>
+
+                    <th class="year3-header">Աշխատանքային տարի 3</th>
+                    <th class="year3-header">Օրերի քանակ</th>
+                    <th class="year3-header">Արձակուրդի սկզբի վերջնաժամկետ</th>
 
                     <th>Պահուստ / Վերջնահաշվարկ</th>
                     <th>Կարգավիճակ</th>
                     <th>Գործողություն</th>
                 </tr>
             </thead>
-            <tbody>
-            </tbody>
+            <tbody></tbody>
         </table>
     </div>
 </div>
@@ -169,9 +170,18 @@
     document.getElementById('calcDate').valueAsDate = new Date();
 
     let employeeList = [];
+    let editingEmpId = null;
 
     function formatMoney(amount) {
         return amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatDate(dateObj) {
+        if (!dateObj || isNaN(dateObj.getTime())) return "";
+        let day = String(dateObj.getDate()).padStart(2, '0');
+        let month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        let year = dateObj.getFullYear();
+        return `${day}.${month}.${year}`;
     }
 
     function addMonths(date, months) {
@@ -180,18 +190,10 @@
         return d;
     }
 
-    function formatDate(d) {
-        if (!d || isNaN(d.getTime())) return "-";
-        let day = String(d.getDate()).padStart(2, '0');
-        let month = String(d.getMonth() + 1).padStart(2, '0');
-        let year = d.getFullYear();
-        return `${day}.${month}.${year}`;
-    }
-
-    function parseArmenianDate(dateStr) {
-        if (!dateStr) return "";
-        if (typeof dateStr === 'number') {
-            let parsed = XLSX.SSF.parse_date_code(dateStr);
+    function parseArmenianDate(str) {
+        if (!str) return "";
+        if (typeof str === 'number') {
+            let parsed = XLSX.SSF.parse_date_code(str);
             if (parsed) {
                 let y = parsed.y;
                 let m = String(parsed.m).padStart(2, '0');
@@ -199,7 +201,7 @@
                 return `${y}-${m}-${d}`;
             }
         }
-        let str = String(dateStr).trim().replace('թ.', '').trim();
+        str = String(str).trim().replace('թ.', '').trim();
         let parts = str.split('.');
         if (parts.length === 3) {
             let day = parts[0].padStart(2, '0');
@@ -210,6 +212,25 @@
         return str;
     }
 
+    function getWorkingDaysInMonth(year, month, scheduleDays, fromDay = 1, toDay = null) {
+        let totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+        let startDay = fromDay;
+        let endDay = toDay ? toDay : totalDaysInMonth;
+        
+        let workDays = 0;
+        for (let d = startDay; d <= endDay; d++) {
+            let currentDate = new Date(year, month, d);
+            let dayOfWeek = currentDate.getDay(); 
+            
+            if (scheduleDays == 20) {
+                if (dayOfWeek !== 0 && dayOfWeek !== 6) workDays++;
+            } else {
+                if (dayOfWeek !== 0) workDays++;
+            }
+        }
+        return workDays;
+    }
+
     function clearInputs() {
         document.getElementById('empCode').value = '';
         document.getElementById('empName').value = '';
@@ -218,6 +239,11 @@
         document.getElementById('extraDays').value = '0';
         document.getElementById('workSchedule').value = '20';
         resetVacationRows();
+        
+        editingEmpId = null;
+        const btnAdd = document.getElementById('btnAddEmp');
+        btnAdd.innerHTML = '➕ Հաշվարկել և Ավելացնել';
+        btnAdd.className = 'action-btn btn-add';
     }
 
     function resetVacationRows() {
@@ -254,7 +280,7 @@
                         focusables[currentIndex + 1].select();
                     }
                 } else if (currentIndex === focusables.length - 1) {
-                    addSingleEmployee();
+                    saveEmployeeHandler();
                     if (focusables.length > 0) {
                         focusables[0].focus();
                     }
@@ -263,20 +289,20 @@
         }
     });
 
-    function addVacationRow() {
+    function addVacationRow(data = null) {
         const container = document.getElementById('vacationContainer');
         const row = document.createElement('div');
         row.className = 'vacation-row';
         row.innerHTML = `
             <select class="v-type focusable">
-                <option value="paid">Վճարովի արձակուրդ</option>
-                <option value="unpaid">Իր հաշվին (չվճարվող)</option>
-                <option value="childcare">Երեխայի խնամք (մինչև 3 տ․)</option>
-                <option value="schedule_change">Ռեժիմի փոփոխություն (5 կամ 6 օր)</option>
+                <option value="paid" ${data && data.type === 'paid' ? 'selected' : ''}>Վճարովի արձակուրդ</option>
+                <option value="unpaid" ${data && data.type === 'unpaid' ? 'selected' : ''}>Իր հաշվին (չվճարվող)</option>
+                <option value="childcare" ${data && (data.type === 'childcare' || data.type === 'խնամք') ? 'selected' : ''}>Երեխայի խնամք (մինչև 3 տ․)</option>
+                <option value="schedule_change" ${data && (data.type === 'schedule_change' || data.type === 'ռեժիմ') ? 'selected' : ''}>Ռեժիմի փոփոխություն (5 կամ 6 օր)</option>
             </select>
-            <input type="date" class="v-date focusable" placeholder="Սկիզբ / Ամսաթիվ">
-            <input type="date" class="v-end-date focusable" placeholder="Վերջ (խնամքի համար)">
-            <input type="number" class="v-days focusable" placeholder="Օրեր / Նոր ռեժիմ" min="0.5" step="0.5" style="width: 130px;">
+            <input type="date" class="v-date focusable" value="${data ? data.date : ''}" placeholder="Սկիզբ / Ամսաթիվ">
+            <input type="date" class="v-end-date focusable" value="${data && data.endDate ? data.endDate : ''}" placeholder="Վերջ (խնամքի համար)">
+            <input type="number" class="v-days focusable" value="${data ? data.days : ''}" placeholder="Օրեր / Նոր ռեժիմ" min="0.5" step="0.5" style="width: 130px;">
             <button type="button" class="btn-remove-row" onclick="removeVacationRow(this)">✕</button>
         `;
         container.appendChild(row);
@@ -292,7 +318,7 @@
     }
 
     function calculateEmployeeData(customData = null) {
-        let code, name, startDateVal, calcDateVal, scheduleType, extraDays, salary, vacationHistory = [];
+        let code, name, startDateVal, calcDateVal, scheduleType, extraDays, salary, rawVacationHistory = [];
 
         if (customData) {
             code = customData.code;
@@ -302,7 +328,7 @@
             scheduleType = customData.scheduleType;
             extraDays = customData.extraDays || 0;
             salary = customData.salary || 0;
-            vacationHistory = customData.history || [];
+            rawVacationHistory = customData.history || [];
         } else {
             code = document.getElementById('empCode').value || "0001";
             name = document.getElementById('empName').value || "Անուն Ազգանուն";
@@ -324,7 +350,7 @@
                 const daysVal = parseFloat(vDays[i].value) || 0;
 
                 if (daysVal > 0 || typeVal === 'childcare') {
-                    vacationHistory.push({ type: typeVal, date: dateVal || "Անհայտ", endDate: endDateVal, days: daysVal });
+                    rawVacationHistory.push({ type: typeVal, date: dateVal || "Անհայտ", endDate: endDateVal, days: daysVal });
                 }
             }
         }
@@ -341,7 +367,7 @@
         let childcarePeriods = [];
         let scheduleChanges = [];
 
-        vacationHistory.forEach(h => {
+        rawVacationHistory.forEach(h => {
             if (h.type === 'paid') {
                 totalPaidUsed += h.days;
             } else if (h.type === 'unpaid') {
@@ -358,7 +384,7 @@
 
         scheduleChanges.sort((a, b) => a.date - b.date);
 
-        // ԱՄՍԱԿԱՆ ԿՏՐՎԱԾՔՈՎ ԿՈՒՏԱԿՄԱՆ ՀԱՇՎԱՐԿ (ԷՔՍԵԼԻ ՆՄԱՆ)
+        // ԻՐՏԵԿԻ ՃՇԳՐԻՏ ՀԱՇՎԱՐԿ
         let accruedVacation = 0;
         let currMonth = new Date(start.getFullYear(), start.getMonth(), 1);
         let endMonth = new Date(calc.getFullYear(), calc.getMonth(), 1);
@@ -367,19 +393,34 @@
             let nextMonth = new Date(currMonth.getFullYear(), currMonth.getMonth() + 1, 1);
             let monthEnd = new Date(nextMonth - 1);
 
-            // Ստուգում ենք՝ արդյոք այս ամբողջ ամիսը ընկած է խնամքի արձակուրդի մեջ
             let inChildcare = childcarePeriods.some(p => p.start <= currMonth && p.end >= monthEnd);
 
             if (!inChildcare) {
-                // Որոշում ենք տվյալ ամսվա ռեժիմը (5-օրյա թե 6-օրյա)
                 let activeRate = parseFloat(scheduleType) + extraDays;
                 for (let sc of scheduleChanges) {
                     if (sc.date <= monthEnd) {
                         activeRate = sc.rate + extraDays;
                     }
                 }
-                let monthlyRate = activeRate / 12; // 1.67 (5-օրյա) կամ 2.00 (6-օրյա)
-                accruedVacation += monthlyRate;
+                let fullMonthlyRate = activeRate / 12;
+
+                if (currMonth.getFullYear() === start.getFullYear() && currMonth.getMonth() === start.getMonth() && start.getDate() > 1) {
+                    let totalWorkDaysInMonth = getWorkingDaysInMonth(start.getFullYear(), start.getMonth(), scheduleType);
+                    let actualWorkDaysWorked = getWorkingDaysInMonth(start.getFullYear(), start.getMonth(), scheduleType, start.getDate());
+                    if (totalWorkDaysInMonth > 0) {
+                        accruedVacation += fullMonthlyRate * (actualWorkDaysWorked / totalWorkDaysInMonth);
+                    }
+                } 
+                else if (currMonth.getFullYear() === calc.getFullYear() && currMonth.getMonth() === calc.getMonth() && calc.getDate() < monthEnd.getDate()) {
+                    let totalWorkDaysInMonth = getWorkingDaysInMonth(calc.getFullYear(), calc.getMonth(), scheduleType);
+                    let actualWorkDaysWorked = getWorkingDaysInMonth(calc.getFullYear(), calc.getMonth(), scheduleType, 1, calc.getDate());
+                    if (totalWorkDaysInMonth > 0) {
+                        accruedVacation += fullMonthlyRate * (actualWorkDaysWorked / totalWorkDaysInMonth);
+                    }
+                } 
+                else {
+                    accruedVacation += fullMonthlyRate;
+                }
             }
 
             currMonth = nextMonth;
@@ -398,6 +439,7 @@
 
         const totalDaysCalendar = Math.floor((calc - start) / (1000 * 60 * 60 * 24)) + 1;
 
+        // FIFO ԱՇԽԱՏԱՆՔԱՅԻՆ ՏԱՐԻՆԵՐԻ ԲԱՇԽՈՒՄ
         let yearPeriods = [];
         let tempStart = new Date(start);
         let remUsed = totalAllUsed;
@@ -410,8 +452,7 @@
             let nextYearStart = new Date(tempStart);
             nextYearStart.setFullYear(nextYearStart.getFullYear() + 1);
 
-            let yearStartLabel = `${tempStart.getFullYear()}-${nextYearStart.getFullYear()} (${formatDate(tempStart)})`;
-            
+            let yearStartLabel = `${tempStart.getFullYear()}-${nextYearStart.getFullYear()}`;
             let deadlineDate = addMonths(tempStart, 30);
             let deadlineLabel = formatDate(deadlineDate);
 
@@ -439,6 +480,11 @@
 
             yearPeriods.push({
                 startLabel: yearStartLabel,
+                startYear: tempStart.getFullYear(),
+                endYear: nextYearStart.getFullYear(),
+                yearStart: new Date(tempStart),
+                yearEnd: new Date(nextYearStart),
+                totalDays: daysInThisYear,
                 remaining: yearRemaining,
                 deadline: deadlineLabel,
                 isExpired: isExpired
@@ -453,6 +499,61 @@
             yearPeriods[yearPeriods.length - 1].remaining = parseFloat((yearPeriods[yearPeriods.length - 1].remaining + diffSum).toFixed(2));
         }
 
+        // --- ԱՎՏՈՄԱՏ ՄԱՍՆԱՏՈՒՄ (SPLIT BY YEAR) ---
+        let fifoYearIndex = 0;
+        let fifoCurrentYearCapacity = yearPeriods.length > 0 ? yearPeriods[0].totalDays : 0;
+
+        let processedHistory = [];
+
+        rawVacationHistory.forEach(h => {
+            if (h.type === 'paid' || h.type === 'unpaid') {
+                let remainingToSplit = h.days;
+
+                while (remainingToSplit > 0 && fifoYearIndex < yearPeriods.length) {
+                    let currentYearLabel = yearPeriods[fifoYearIndex].startLabel;
+                    let portion = 0;
+
+                    if (fifoCurrentYearCapacity >= remainingToSplit) {
+                        portion = remainingToSplit;
+                        fifoCurrentYearCapacity -= remainingToSplit;
+                        remainingToSplit = 0;
+                    } else {
+                        portion = fifoCurrentYearCapacity;
+                        remainingToSplit -= fifoCurrentYearCapacity;
+                        fifoYearIndex++;
+                        if (fifoYearIndex < yearPeriods.length) {
+                            fifoCurrentYearCapacity = yearPeriods[fifoYearIndex].totalDays;
+                        }
+                    }
+
+                    if (portion > 0) {
+                        portion = parseFloat(portion.toFixed(2));
+                        processedHistory.push({
+                            ...h,
+                            days: portion,
+                            workYearLabel: currentYearLabel
+                        });
+                    }
+                }
+
+                // Եթե օրերը գերազանցում են բոլոր տարիների կուտակումը
+                if (remainingToSplit > 0) {
+                    let lastYearLabel = yearPeriods.length > 0 ? yearPeriods[yearPeriods.length - 1].startLabel : "";
+                    processedHistory.push({
+                        ...h,
+                        days: parseFloat(remainingToSplit.toFixed(2)),
+                        workYearLabel: lastYearLabel
+                    });
+                }
+            } else {
+                // Խնամք կամ ռեժիմի փոփոխություն
+                processedHistory.push({
+                    ...h,
+                    workYearLabel: ""
+                });
+            }
+        });
+
         const currentDivisor = (lastRate - extraDays) === 20 ? 21 : 25;
         const dailySalary = salary > 0 ? (salary / currentDivisor) : 0;
         const reserveAmount = parseFloat((remainingDays * dailySalary).toFixed(2));
@@ -461,7 +562,7 @@
         const isRisk = remainingDays >= maxAllowedAccumulated || hasExpiredRisk;
 
         return {
-            id: Date.now() + Math.random(),
+            id: customData && customData.id ? customData.id : (Date.now() + Math.random()),
             code,
             name,
             startDate: startDateVal,
@@ -470,30 +571,106 @@
             accrued: accruedVacation,
             usedTotal: totalPaidUsed.toFixed(2),
             unpaidTotal: totalUnpaidDays,
-            history: vacationHistory,
+            history: processedHistory,
+            rawHistory: rawVacationHistory, // Խմբագրման ժամանակ նախնական տեսքը պահպանելու համար
             remaining: remainingDays,
             salary,
             scheduleType,
+            extraDays,
             reserveAmount: reserveAmount,
             yearPeriods: yearPeriods,
             isRisk
         };
     }
 
-    function addSingleEmployee() {
+    function saveEmployeeHandler() {
         const emp = calculateEmployeeData();
         if (!emp) {
             alert("Խնդրում ենք լրացնել ընդունման և հաշվարկման ճիշտ ամսաթվերը:");
             return;
         }
-        employeeList.push(emp);
+
+        if (editingEmpId !== null) {
+            const index = employeeList.findIndex(e => e.id === editingEmpId);
+            if (index !== -1) {
+                emp.id = editingEmpId;
+                employeeList[index] = emp;
+            }
+        } else {
+            employeeList.push(emp);
+        }
+
         renderTable();
         showSummaryAlert([emp]);
         clearInputs();
     }
 
+    function editEmployee(id) {
+        const emp = employeeList.find(e => e.id === id);
+        if (!emp) return;
+
+        editingEmpId = id;
+
+        document.getElementById('empCode').value = emp.code;
+        document.getElementById('empName').value = emp.name;
+        document.getElementById('startDate').value = emp.startDate;
+        document.getElementById('workSchedule').value = emp.scheduleType;
+        document.getElementById('extraDays').value = emp.extraDays;
+        document.getElementById('salary').value = emp.salary;
+        document.getElementById('calcDate').value = emp.calcDate;
+
+        const container = document.getElementById('vacationContainer');
+        container.innerHTML = '';
+
+        // Խմբագրելիս ցույց ենք տալիս օգտատիրոջ մուտքագրած նախնական տողերը (օր․ 46 օր)
+        const historyToLoad = emp.rawHistory || emp.history;
+        if (historyToLoad && historyToLoad.length > 0) {
+            historyToLoad.forEach(h => addVacationRow(h));
+        } else {
+            resetVacationRows();
+        }
+
+        const btnAdd = document.getElementById('btnAddEmp');
+        btnAdd.innerHTML = '💾 Պահպանել Փոփոխությունը';
+        btnAdd.className = 'action-btn btn-template';
+
+        renderTable();
+    }
+
+    function recalculateAllEmployees() {
+        if (employeeList.length === 0) {
+            alert("Ցուցակում աշխատակիցներ չկան:");
+            return;
+        }
+
+        const globalCalcDate = document.getElementById('calcDate').value;
+        if (!globalCalcDate) {
+            alert("Խնդրում ենք ընտրել հաշվարկման ամսաթիվը:");
+            return;
+        }
+
+        employeeList = employeeList.map(emp => {
+            const updatedData = {
+                id: emp.id,
+                code: emp.code,
+                name: emp.name,
+                startDate: emp.startDate,
+                calcDate: globalCalcDate,
+                scheduleType: emp.scheduleType,
+                extraDays: emp.extraDays,
+                salary: emp.salary,
+                history: emp.rawHistory || emp.history
+            };
+            return calculateEmployeeData(updatedData);
+        });
+
+        renderTable();
+        showSummaryAlert(employeeList);
+    }
+
     function deleteEmployee(id) {
         employeeList = employeeList.filter(emp => emp.id !== id);
+        if (editingEmpId === id) clearInputs();
         renderTable();
         if (employeeList.length > 0) {
             showSummaryAlert(employeeList);
@@ -537,7 +714,7 @@
 
         employeeList.forEach(emp => {
             let historyHTML = `<b>${emp.usedTotal} օր (վճարովի)</b><br>`;
-            if (emp.history.length > 0) {
+            if (emp.history && emp.history.length > 0) {
                 emp.history.forEach(h => {
                     let tagClass = 'history-tag';
                     let typeLabel = 'Վճարովի';
@@ -553,7 +730,8 @@
                         typeLabel = `Նոր ռեժիմ՝ ${h.days}-օրյա`;
                     }
 
-                    historyHTML += `<span class="${tagClass}">📅 ${h.date} — <b>${h.days || ''} ${h.type === 'schedule_change' ? 'օրյա' : 'օր'}</b> (${typeLabel})</span>`;
+                    let yearTag = h.workYearLabel ? ` <b style="color:#2c3e50;">(${h.workYearLabel})</b>` : '';
+                    historyHTML += `<span class="${tagClass}">📅 ${h.date} — <b>${h.days || ''} ${h.type === 'schedule_change' ? 'օրյա' : 'օր'}</b> (${typeLabel})${yearTag}</span>`;
                 });
             }
 
@@ -567,8 +745,11 @@
             let y3 = activeYears[2];
 
             const reserveDisplay = emp.reserveAmount > 0 ? `${formatMoney(emp.reserveAmount)} AMD` : '-';
+            const isEditing = emp.id === editingEmpId;
 
             const tr = document.createElement('tr');
+            if (isEditing) tr.className = 'editing-row';
+
             tr.innerHTML = `
                 <td>${emp.code}</td>
                 <td><b>${emp.name}</b></td>
@@ -577,20 +758,17 @@
                 <td>Կուտ․ <b>${emp.accrued}</b><br>${historyHTML}</td>
                 <td><b>${emp.remaining}</b></td>
                 
-                <!-- 1-ին Փուլ -->
-                <td>${y1.startLabel}</td>
-                <td class="${y1.isExpired ? 'expired-cell' : ''}"><b>${y1.remaining}</b></td>
-                <td class="${y1.isExpired ? 'expired-cell' : ''}">${y1.deadline}</td>
+                <td class="year1-cell">${y1.startLabel}</td>
+                <td class="year1-cell ${y1.isExpired ? 'expired-cell' : ''}"><b>${y1.remaining}</b></td>
+                <td class="year1-cell ${y1.isExpired ? 'expired-cell' : ''}">${y1.deadline}</td>
 
-                <!-- 2-րդ Փուլ -->
-                <td>${y2.startLabel}</td>
-                <td class="${y2.isExpired ? 'expired-cell' : ''}"><b>${y2.remaining}</b></td>
-                <td class="${y2.isExpired ? 'expired-cell' : ''}">${y2.deadline}</td>
+                <td class="year2-cell">${y2.startLabel}</td>
+                <td class="year2-cell ${y2.isExpired ? 'expired-cell' : ''}"><b>${y2.remaining}</b></td>
+                <td class="year2-cell ${y2.isExpired ? 'expired-cell' : ''}">${y2.deadline}</td>
 
-                <!-- 3-րդ Փուլ -->
-                <td>${y3.startLabel}</td>
-                <td class="${y3.isExpired ? 'expired-cell' : ''}"><b>${y3.remaining}</b></td>
-                <td class="${y3.isExpired ? 'expired-cell' : ''}">${y3.deadline}</td>
+                <td class="year3-cell">${y3.startLabel}</td>
+                <td class="year3-cell ${y3.isExpired ? 'expired-cell' : ''}"><b>${y3.remaining}</b></td>
+                <td class="year3-cell ${y3.isExpired ? 'expired-cell' : ''}">${y3.deadline}</td>
 
                 <td><b>${reserveDisplay}</b></td>
                 <td>
@@ -599,7 +777,8 @@
                         : '<span class="badge-success">Նորմալ</span>'}
                 </td>
                 <td>
-                    <button class="btn-delete" onclick="deleteEmployee(${emp.id})">Ջնջել</button>
+                    <button class="btn-edit" onclick="editEmployee(${emp.id})">✏️ Խմբագրել</button>
+                    <button class="btn-delete" onclick="deleteEmployee(${emp.id})">🗑️ Ջնջել</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -621,72 +800,27 @@
         });
     }
 
-    // EXCEL ՁԵՎԱՆՄՈՒՇԻ ՆԵՐԲԵՌՆՈՒՄ (2 ԷՋ)
-    function downloadTemplate() {
-        const sheet1Data = [
-            [
-                "Տաբելային համար", 
-                "Ազգանուն, անուն", 
-                "Ընդունման ամսաթիվ (ՕՕ.ԱԱ.ՏՏՏՏ)", 
-                "Աշխատանքային ռեժիմ (5 կամ 6)", 
-                "Լրացուցիչ օրեր (տարեկան)",
-                "Միջին աշխատավարձ (AMD)", 
-                "Հաշվարկման ամսաթիվ (ՕՕ.ԱԱ.ՏՏՏՏ)"
-            ],
-            ["0001", "Պողոսյան Պողոս", "01.01.2023", "5", 0, 250000, "01.10.2026"],
-            ["0002", "Պետրոսյան Պետրոս", "15.05.2022", "6", 4, 300000, "01.10.2026"]
-        ];
-
-        const sheet2Data = [
-            [
-                "Տաբելային համար", 
-                "Տեսակ (Վճարովի / Իր հաշվին / Երեխայի խնամք / Ռեժիմի փոփոխություն)", 
-                "Սկզբի ամսաթիվ (ՕՕ.ԱԱ.ՏՏՏՏ)", 
-                "Վերջի ամսաթիվ (Խնամքի համար)",
-                "Օրերի քանակ / Նոր ռեժիմ (5 կամ 6)"
-            ],
-            ["0001", "Վճարովի", "10.05.2024", "", 10],
-            ["0001", "Իր հաշվին", "15.08.2024", "", 3],
-            ["0001", "Երեխայի խնամք", "14.06.2022", "31.07.2024", 0],
-            ["0001", "Ռեժիմի փոփոխություն", "01.10.2024", "", 5]
-        ];
-
-        const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
-        ws1['!cols'] = [{ wch: 18 }, { wch: 25 }, { wch: 28 }, { wch: 28 }, { wch: 22 }, { wch: 25 }, { wch: 28 }];
-
-        const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
-        ws2['!cols'] = [{ wch: 18 }, { wch: 35 }, { wch: 22 }, { wch: 22 }, { wch: 25 }];
-
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, ws1, "Աշխատակիցներ");
-        XLSX.utils.book_append_sheet(workbook, ws2, "Արձակուրդներ");
-        
-        XLSX.writeFile(workbook, "Արձակուրդների_Ձևանմուշ_2Էջ.xlsx");
-    }
-
-    // EXCEL ԱՐՏԱՀԱՆՈՒՄ (2 ԷՋ)
     function exportToExcel() {
         if (employeeList.length === 0) {
             alert("Ցուցակը դատարկ է:");
             return;
         }
 
-        const sheet1Data = [
-            [
-                "Հ/Հ", "Տաբելային համար", "Ազգանուն, անուն", "Ընդունման ամսաթիվ", "Հաշվարկման ամսաթիվ",
-                "Ընդհանուր Ստաժ (օր)", "Կուտակված", "Օգտագործված", "Մնացորդ (օր)",
-                "Աշխատանքային տարի 1", "Օրերի քանակ", "Արձակուրդի սկզբի վերջնաժամկետ",
-                "Աշխատանքային տարի 2", "Օրերի քանակ", "Արձակուրդի սկզբի վերջնաժամկետ",
-                "Աշխատանքային տարի 3", "Օրերի քանակ", "Արձակուրդի սկզբի վերջնաժամկետ",
-                "Միջին աշխատավարձ (AMD)", "Պահուստ / Վերջնահաշվարկ (AMD)"
-            ]
+        const headers1 = [
+            "Տաբել", "Ազգանուն, անուն", "Ընդունման ամսաթիվ", "Հաշվարկման ամսաթիվ",
+            "Ընդհանուր Ստաժ (օր)", "Կուտակված", "Օգտագործված", "Մնացորդ",
+            "Աշխատանքային տարի 1", "Օրերի քանակ", "Արձակուրդի սկզբի վերջնաժամկետ",
+            "Աշխատանքային տարի 2", "Օրերի քանակ", "Արձակուրդի սկզբի վերջնաժամկետ",
+            "Աշխատանքային տարի 3", "Օրերի քանակ", "Արձակուրդի սկզբի վերջնաժամկետ",
+            "Միջին աշխատավարձ", "Պահուստ / Վերջնահաշվարկ"
         ];
 
-        const sheet2Data = [
-            ["Տաբելային համար", "Ազգանուն, անուն", "Տեսակ", "Սկզբի ամսաթիվ", "Վերջի ամսաթիվ", "Օրերի քանակ / Նոր ռեժիմ"]
-        ];
+        let wsData1 = [headers1];
 
-        employeeList.forEach((emp, index) => {
+        const headers2 = ["Տաբելային համար", "Ազգանուն, անուն", "Տեսակ", "Սկզբի ամսաթիվ", "Վերջի ամսաթիվ", "Օրեր / Ռեժիմ", "Աշխատանքային տարի (FIFO)"];
+        let wsData2 = [headers2];
+
+        employeeList.forEach((emp) => {
             const formattedStart = emp.startDate.split('-').reverse().join('.') + "թ.";
             const formattedCalc = emp.calcDate.split('-').reverse().join('.') + "թ.";
 
@@ -699,8 +833,7 @@
             let y2 = activeYears[1];
             let y3 = activeYears[2];
 
-            sheet1Data.push([
-                index + 1,
+            wsData1.push([
                 emp.code,
                 emp.name,
                 formattedStart,
@@ -723,32 +856,160 @@
                     else if (h.type === 'childcare' || h.type === 'խնամք' || h.type === 'Երեխայի խնամք') typeLabel = 'Երեխայի խնամք';
                     else if (h.type === 'schedule_change' || h.type === 'ռեժիմ') typeLabel = 'Ռեժիմի փոփոխություն';
 
-                    sheet2Data.push([emp.code, emp.name, typeLabel, h.date, h.endDate || '', h.days]);
+                    wsData2.push([emp.code, emp.name, typeLabel, h.date, h.endDate || '', h.days, h.workYearLabel || '']);
                 });
             }
         });
 
-        const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
+        const ws1 = XLSX.utils.aoa_to_sheet(wsData1);
+        const ws2 = XLSX.utils.aoa_to_sheet(wsData2);
+
+        const headerStyle = {
+            font: { bold: true, color: { rgb: "FFFFFF" }, sz: 10, name: "Calibri" },
+            fill: { fgColor: { rgb: "343A40" } },
+            alignment: { horizontal: "center", vertical: "center", wrapText: true },
+            border: {
+                top: { style: "thin", color: { rgb: "4B6584" } },
+                bottom: { style: "thin", color: { rgb: "4B6584" } },
+                left: { style: "thin", color: { rgb: "4B6584" } },
+                right: { style: "thin", color: { rgb: "4B6584" } }
+            }
+        };
+
+        const year1Style = { fgColor: { rgb: "E2EFDA" } };
+        const year2Style = { fgColor: { rgb: "DDEBF7" } };
+        const year3Style = { fgColor: { rgb: "EDEDED" } };
+
+        const thinBorder = {
+            top: { style: "thin", color: { rgb: "DCDDE1" } },
+            bottom: { style: "thin", color: { rgb: "DCDDE1" } },
+            left: { style: "thin", color: { rgb: "DCDDE1" } },
+            right: { style: "thin", color: { rgb: "DCDDE1" } }
+        };
+
+        const range1 = XLSX.utils.decode_range(ws1['!ref']);
+        for (let R = range1.s.r; R <= range1.e.r; ++R) {
+            for (let C = range1.s.c; C <= range1.e.c; ++C) {
+                const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+                if (!ws1[cellRef]) continue;
+
+                if (R === 0) {
+                    ws1[cellRef].s = headerStyle;
+                } else {
+                    let isEvenRow = R % 2 === 0;
+                    let cellFill = isEvenRow ? { fgColor: { rgb: "F8F9FA" } } : { fgColor: { rgb: "FFFFFF" } };
+
+                    if (C >= 8 && C <= 10) cellFill = year1Style;
+                    else if (C >= 11 && C <= 13) cellFill = year2Style;
+                    else if (C >= 14 && C <= 16) cellFill = year3Style;
+
+                    let align = "center";
+                    if (C === 1) align = "left";
+                    if (C === 17 || C === 18) align = "right";
+
+                    ws1[cellRef].s = {
+                        font: { sz: 10, name: "Calibri", color: { rgb: "000000" } },
+                        fill: cellFill,
+                        alignment: { horizontal: align, vertical: "center" },
+                        border: thinBorder
+                    };
+
+                    if (C === 17 || C === 18) {
+                        ws1[cellRef].z = '#,##0.00" AMD"';
+                    }
+                }
+            }
+        }
+
+        const range2 = XLSX.utils.decode_range(ws2['!ref']);
+        for (let R = range2.s.r; R <= range2.e.r; ++R) {
+            for (let C = range2.s.c; C <= range2.e.c; ++C) {
+                const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+                if (!ws2[cellRef]) continue;
+
+                if (R === 0) {
+                    ws2[cellRef].s = headerStyle;
+                } else {
+                    let isEvenRow = R % 2 === 0;
+                    let cellFill = isEvenRow ? { fgColor: { rgb: "F8F9FA" } } : { fgColor: { rgb: "FFFFFF" } };
+
+                    let align = "center";
+                    if (C === 1 || C === 2) align = "left";
+
+                    ws2[cellRef].s = {
+                        font: { sz: 10, name: "Calibri", color: { rgb: "000000" } },
+                        fill: cellFill,
+                        alignment: { horizontal: align, vertical: "center" },
+                        border: thinBorder
+                    };
+                }
+            }
+        }
+
         ws1['!cols'] = [
-            { wch: 6 }, { wch: 16 }, { wch: 22 }, { wch: 18 }, { wch: 18 },
+            { wch: 10 }, { wch: 24 }, { wch: 18 }, { wch: 18 },
             { wch: 18 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
-            { wch: 25 }, { wch: 12 }, { wch: 28 },
-            { wch: 25 }, { wch: 12 }, { wch: 28 },
-            { wch: 25 }, { wch: 12 }, { wch: 28 },
-            { wch: 20 }, { wch: 28 }
+            { wch: 22 }, { wch: 12 }, { wch: 16 },
+            { wch: 22 }, { wch: 12 }, { wch: 16 },
+            { wch: 22 }, { wch: 12 }, { wch: 16 },
+            { wch: 20 }, { wch: 24 }
         ];
 
-        const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
-        ws2['!cols'] = [{ wch: 18 }, { wch: 25 }, { wch: 22 }, { wch: 18 }, { wch: 18 }, { wch: 20 }];
+        ws2['!cols'] = [
+            { wch: 16 }, { wch: 24 }, { wch: 20 }, 
+            { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 24 }
+        ];
+
+        ws1['!rows'] = [{ hpt: 26 }];
+        ws2['!rows'] = [{ hpt: 26 }];
 
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, ws1, "Ամփոփ Հաշվարկ");
         XLSX.utils.book_append_sheet(workbook, ws2, "Արձակուրդների Պատմություն");
 
-        XLSX.writeFile(workbook, "Արձակուրդների_Հաշվարկ_Արտահանում.xlsx");
+        XLSX.writeFile(workbook, "Արձակուրդների_Հաշվարկ_Ոճավորված.xlsx");
     }
 
-    // EXCEL ՖԱՅԼԻ ՆԵՐՄՈՒԾՈՒՄ (2 ԷՋ)
+    function downloadTemplate() {
+        const sheet1Data = [
+            [
+                "Տաբելային համար", 
+                "Ազգանուն, անուն", 
+                "Ընդունման ամսաթիվ (ՕՕ.ԱԱ.ՏՏՏՏ)", 
+                "Աշխատանքային ռեժիմ (5 կամ 6)", 
+                "Լրացուցիչ օրեր (տարեկան)",
+                "Միջին աշխատավարձ (AMD)", 
+                "Հաշվարկման ամսաթիվ (ՕՕ.ԱԱ.ՏՏՏՏ)"
+            ],
+            ["0001", "Պողոսյան Պողոս", "15.01.2023", "5", 0, 250000, "01.10.2026"],
+            ["0002", "Պետրոսյան Պետրոս", "01.05.2022", "6", 4, 300000, "01.10.2026"]
+        ];
+
+        const sheet2Data = [
+            [
+                "Տաբելային համար", 
+                "Տեսակ (paid/unpaid/childcare/schedule_change)", 
+                "Սկզբնաժամկետ / Ամսաթիվ (ՕՕ.ԱԱ.ՏՏՏՏ)", 
+                "Վերջնաժամկետ (Եթե խնամք է)", 
+                "Օրերի քանակ / Նոր ռեժիմ"
+            ],
+            ["0001", "paid", "10.05.2024", "", 14],
+            ["0001", "unpaid", "01.08.2024", "", 5]
+        ];
+
+        const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
+        ws1['!cols'] = [{ wch: 18 }, { wch: 25 }, { wch: 28 }, { wch: 28 }, { wch: 22 }, { wch: 25 }, { wch: 28 }];
+
+        const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
+        ws2['!cols'] = [{ wch: 18 }, { wch: 35 }, { wch: 22 }, { wch: 22 }, { wch: 25 }];
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, ws1, "Աշխատակիցներ");
+        XLSX.utils.book_append_sheet(workbook, ws2, "Պատմություն");
+
+        XLSX.writeFile(workbook, "Արձակուրդների_Ձևանմուշ_2Էջ.xlsx");
+    }
+
     function importFromExcel(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -760,54 +1021,40 @@
 
             if (workbook.SheetNames.length === 0) return;
 
-            const sheet1Name = workbook.SheetNames[0];
-            const sheet1 = workbook.Sheets[sheet1Name];
+            const sheet1 = workbook.Sheets[workbook.SheetNames[0]];
             const empRows = XLSX.utils.sheet_to_json(sheet1, { header: 1 });
 
             let historyMap = {};
+
             if (workbook.SheetNames.length > 1) {
-                const sheet2Name = workbook.SheetNames[1];
-                const sheet2 = workbook.Sheets[sheet2Name];
+                const sheet2 = workbook.Sheets[workbook.SheetNames[1]];
                 const historyRows = XLSX.utils.sheet_to_json(sheet2, { header: 1 });
 
-                for (let i = 1; i < historyRows.length; i++) {
-                    const row = historyRows[i];
-                    if (!row || row.length < 3) continue;
+                for (let j = 1; j < historyRows.length; j++) {
+                    const hRow = historyRows[j];
+                    if (!hRow || hRow.length < 3) continue;
 
-                    const code = String(row[0]).trim();
-                    const rawType = String(row[1]).trim().toLowerCase();
-                    
-                    let type = 'paid';
-                    if (rawType.includes('իր') || rawType.includes('unpaid')) {
-                        type = 'unpaid';
-                    } else if (rawType.includes('խնամք') || rawType.includes('childcare')) {
-                        type = 'childcare';
-                    } else if (rawType.includes('ռեժիմ') || rawType.includes('schedule')) {
-                        type = 'schedule_change';
+                    const hCode = String(hRow[0]).trim();
+                    const rawType = String(hRow[1]).trim().toLowerCase();
+                    const dateVal = parseArmenianDate(hRow[2]);
+                    const endDateVal = hRow[3] ? parseArmenianDate(hRow[3]) : "";
+                    const daysVal = parseFloat(hRow[4]) || 0;
+
+                    let typeVal = 'paid';
+                    if (rawType.includes('unpaid') || rawType.includes('իր հաշվին')) typeVal = 'unpaid';
+                    else if (rawType.includes('childcare') || rawType.includes('խնամք')) typeVal = 'childcare';
+                    else if (rawType.includes('schedule') || rawType.includes('ռեժիմ')) typeVal = 'schedule_change';
+
+                    if (!historyMap[hCode]) {
+                        historyMap[hCode] = [];
                     }
 
-const date = row[2] ? parseArmenianDate(row[2]) : "Անհայտ";
-                
-                let endDate = "";
-                let days = 0;
-
-                // Եթե 4-րդ սյունակում (row[3]) ամսաթիվ է, վերցնում ենք որպես վերջնաժամկետ (endDate)
-                if (row[3] !== undefined && row[3] !== null && row[3] !== "") {
-                    let parsedEnd = parseArmenianDate(row[3]);
-                    if (parsedEnd && (parsedEnd.includes('-') || parsedEnd.includes('.'))) {
-                        endDate = parsedEnd;
-                    } else {
-                        days = parseFloat(row[3]) || 0;
-                    }
-                }
-
-                // Եթե 5-րդ սյունակում (row[4]) թիվ է, վերցնում ենք որպես օրերի քանակ
-                if (row[4] !== undefined && row[4] !== null && row[4] !== "") {
-                    days = parseFloat(row[4]) || days;
-                }
-
-                    if (!historyMap[code]) historyMap[code] = [];
-                    historyMap[code].push({ type, date, endDate, days });
+                    historyMap[hCode].push({
+                        type: typeVal,
+                        date: dateVal,
+                        endDate: endDateVal,
+                        days: daysVal
+                    });
                 }
             }
 
@@ -825,6 +1072,8 @@ const date = row[2] ? parseArmenianDate(row[2]) : "Անհայտ";
                 const salary = parseFloat(row[5]) || 0;
                 const calcDate = row[6] ? parseArmenianDate(row[6]) : document.getElementById('calcDate').value;
 
+                const empHistory = historyMap[code] || [];
+
                 const empData = {
                     code,
                     name,
@@ -833,7 +1082,7 @@ const date = row[2] ? parseArmenianDate(row[2]) : "Անհայտ";
                     scheduleType,
                     extraDays,
                     salary,
-                    history: historyMap[code] || []
+                    history: empHistory
                 };
 
                 const calcResult = calculateEmployeeData(empData);
@@ -844,9 +1093,7 @@ const date = row[2] ? parseArmenianDate(row[2]) : "Անհայտ";
             }
 
             renderTable();
-            if (newAddedEmps.length > 0) {
-                showSummaryAlert(newAddedEmps);
-            }
+            if (newAddedEmps.length > 0) showSummaryAlert(newAddedEmps);
             event.target.value = '';
         };
 
