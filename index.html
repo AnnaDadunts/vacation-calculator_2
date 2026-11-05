@@ -52,10 +52,14 @@
 
         .badge-danger { background-color: #dc3545; color: white; padding: 3px 6px; border-radius: 4px; font-size: 10px; }
         .badge-success { background-color: #28a745; color: white; padding: 3px 6px; border-radius: 4px; font-size: 10px; }
+        .badge-dismissed { background-color: #6c757d; color: white; padding: 3px 6px; border-radius: 4px; font-size: 10px; }
+        
         .history-tag { display: block; background: #fff; padding: 2px 4px; margin-bottom: 2px; border-radius: 3px; border: 1px solid #ccc; font-size: 10px; text-align: left; }
         .tag-unpaid { background-color: #fff3cd; border-color: #ffeeba; color: #856404; }
         .tag-childcare { background-color: #e2e3e5; border-color: #d6d8db; color: #383d41; }
         .tag-schedule { background-color: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+        .tag-dismissed { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24; font-weight: bold; }
+        
         .expired-cell { background-color: #f8d7da !important; color: #721c24 !important; font-weight: bold; }
         .editing-row { background-color: #fff3cd !important; }
     </style>
@@ -108,6 +112,7 @@
                     <option value="unpaid">Իր հաշվին (չվճարվող)</option>
                     <option value="childcare">Երեխայի խնամք (մինչև 3 տ․)</option>
                     <option value="schedule_change">Ռեժիմի փոփոխություն (5 կամ 6 օր)</option>
+                    <option value="dismissed">Աշխատանքից ազատում</option>
                 </select>
                 <input type="date" class="v-date focusable" placeholder="Սկիզբ / Ամսաթիվ">
                 <input type="date" class="v-end-date focusable" placeholder="Վերջ (խնամքի համար)">
@@ -255,6 +260,7 @@
                     <option value="unpaid">Իր հաշվին (չվճարվող)</option>
                     <option value="childcare">Երեխայի խնամք (մինչև 3 տ․)</option>
                     <option value="schedule_change">Ռեժիմի փոփոխություն (5 կամ 6 օր)</option>
+                    <option value="dismissed">Աշխատանքից ազատում</option>
                 </select>
                 <input type="date" class="v-date focusable" placeholder="Սկիզբ / Ամսաթիվ">
                 <input type="date" class="v-end-date focusable" placeholder="Վերջ (խնամքի համար)">
@@ -299,6 +305,7 @@
                 <option value="unpaid" ${data && data.type === 'unpaid' ? 'selected' : ''}>Իր հաշվին (չվճարվող)</option>
                 <option value="childcare" ${data && (data.type === 'childcare' || data.type === 'խնամք') ? 'selected' : ''}>Երեխայի խնամք (մինչև 3 տ․)</option>
                 <option value="schedule_change" ${data && (data.type === 'schedule_change' || data.type === 'ռեժիմ') ? 'selected' : ''}>Ռեժիմի փոփոխություն (5 կամ 6 օր)</option>
+                <option value="dismissed" ${data && (data.type === 'dismissed' || data.type === 'ազատում') ? 'selected' : ''}>Աշխատանքից ազատում</option>
             </select>
             <input type="date" class="v-date focusable" value="${data ? data.date : ''}" placeholder="Սկիզբ / Ամսաթիվ">
             <input type="date" class="v-end-date focusable" value="${data && data.endDate ? data.endDate : ''}" placeholder="Վերջ (խնամքի համար)">
@@ -349,7 +356,7 @@
                 const endDateVal = vEndDates[i].value;
                 const daysVal = parseFloat(vDays[i].value) || 0;
 
-                if (daysVal > 0 || typeVal === 'childcare') {
+                if (daysVal > 0 || typeVal === 'childcare' || typeVal === 'dismissed') {
                     rawVacationHistory.push({ type: typeVal, date: dateVal || "Անհայտ", endDate: endDateVal, days: daysVal });
                 }
             }
@@ -358,7 +365,27 @@
         if (!startDateVal || !calcDateVal) return null;
 
         const start = new Date(startDateVal);
-        const calc = new Date(calcDateVal);
+        let calc = new Date(calcDateVal);
+
+        // Ստուգենք՝ արդյոք կա ազատման գրանցում պատմության մեջ
+        let dismissalDate = null;
+        rawVacationHistory.forEach(h => {
+            if ((h.type === 'dismissed' || h.type === 'ազատում') && h.date) {
+                let dDate = new Date(h.date);
+                if (!isNaN(dDate.getTime())) {
+                    if (!dismissalDate || dDate < dismissalDate) {
+                        dismissalDate = dDate;
+                    }
+                }
+            }
+        });
+
+        // Եթե աշխատակիցն ազատվել է, հաշվարկման վերջնական ամսաթիվը դառնում է ազատման օրը
+        let isDismissed = false;
+        if (dismissalDate && dismissalDate <= calc) {
+            calc = dismissalDate;
+            isDismissed = true;
+        }
 
         if (calc < start) return null;
 
@@ -427,14 +454,19 @@
         }
 
         const totalAllUsed = totalPaidUsed + totalUnpaidDays;
-        let remainingDays = accruedVacation - totalAllUsed;
+        let remainingDays = isDismissed ? 0 : (accruedVacation - totalAllUsed);
         
-        if (Math.abs(remainingDays - Math.round(remainingDays)) < 0.05) {
-            remainingDays = Math.round(remainingDays);
-            accruedVacation = remainingDays + totalAllUsed;
+        if (!isDismissed) {
+            if (Math.abs(remainingDays - Math.round(remainingDays)) < 0.05) {
+                remainingDays = Math.round(remainingDays);
+                accruedVacation = remainingDays + totalAllUsed;
+            } else {
+                remainingDays = parseFloat(remainingDays.toFixed(2));
+                accruedVacation = parseFloat(accruedVacation.toFixed(2));
+            }
         } else {
-            remainingDays = parseFloat(remainingDays.toFixed(2));
             accruedVacation = parseFloat(accruedVacation.toFixed(2));
+            remainingDays = 0; // Ազատվածների մնացորդը զրոյացվում է
         }
 
         const totalDaysCalendar = Math.floor((calc - start) / (1000 * 60 * 60 * 24)) + 1;
@@ -463,19 +495,23 @@
             }
 
             let usedInThisYear = 0;
-            if (remUsed >= daysInThisYear) {
-                usedInThisYear = daysInThisYear;
-                remUsed -= daysInThisYear;
+            if (!isDismissed) {
+                if (remUsed >= daysInThisYear) {
+                    usedInThisYear = daysInThisYear;
+                    remUsed -= daysInThisYear;
+                } else {
+                    usedInThisYear = remUsed;
+                    remUsed = 0;
+                }
             } else {
-                usedInThisYear = remUsed;
-                remUsed = 0;
+                usedInThisYear = daysInThisYear; // Ազատվածի դեպքում տարիները մարված/փոխհատուցված են
             }
 
-            let yearRemaining = daysInThisYear - usedInThisYear;
+            let yearRemaining = isDismissed ? 0 : (daysInThisYear - usedInThisYear);
             if (yearRemaining < 0) yearRemaining = 0;
             yearRemaining = parseFloat(yearRemaining.toFixed(2));
 
-            let isExpired = (calc > deadlineDate) && (yearRemaining > 0) && (childcarePeriods.length === 0);
+            let isExpired = !isDismissed && (calc > deadlineDate) && (yearRemaining > 0) && (childcarePeriods.length === 0);
             if (isExpired) hasExpiredRisk = true;
 
             yearPeriods.push({
@@ -493,16 +529,16 @@
             tempStart = nextYearStart;
         }
 
-        let sumPeriods = yearPeriods.reduce((acc, curr) => acc + curr.remaining, 0);
-        let diffSum = parseFloat((remainingDays - sumPeriods).toFixed(2));
-        if (Math.abs(diffSum) > 0 && yearPeriods.length > 0) {
-            yearPeriods[yearPeriods.length - 1].remaining = parseFloat((yearPeriods[yearPeriods.length - 1].remaining + diffSum).toFixed(2));
+        if (!isDismissed) {
+            let sumPeriods = yearPeriods.reduce((acc, curr) => acc + curr.remaining, 0);
+            let diffSum = parseFloat((remainingDays - sumPeriods).toFixed(2));
+            if (Math.abs(diffSum) > 0 && yearPeriods.length > 0) {
+                yearPeriods[yearPeriods.length - 1].remaining = parseFloat((yearPeriods[yearPeriods.length - 1].remaining + diffSum).toFixed(2));
+            }
         }
 
-        // --- ԱՎՏՈՄԱՏ ՄԱՍՆԱՏՈՒՄ (SPLIT BY YEAR) ---
         let fifoYearIndex = 0;
         let fifoCurrentYearCapacity = yearPeriods.length > 0 ? yearPeriods[0].totalDays : 0;
-
         let processedHistory = [];
 
         rawVacationHistory.forEach(h => {
@@ -536,7 +572,6 @@
                     }
                 }
 
-                // Եթե օրերը գերազանցում են բոլոր տարիների կուտակումը
                 if (remainingToSplit > 0) {
                     let lastYearLabel = yearPeriods.length > 0 ? yearPeriods[yearPeriods.length - 1].startLabel : "";
                     processedHistory.push({
@@ -546,7 +581,6 @@
                     });
                 }
             } else {
-                // Խնամք կամ ռեժիմի փոփոխություն
                 processedHistory.push({
                     ...h,
                     workYearLabel: ""
@@ -556,30 +590,35 @@
 
         const currentDivisor = (lastRate - extraDays) === 20 ? 21 : 25;
         const dailySalary = salary > 0 ? (salary / currentDivisor) : 0;
-        const reserveAmount = parseFloat((remainingDays * dailySalary).toFixed(2));
+        
+        // Ազատվածի դեպքում պահուստը հաշվարկվում է մինչև ազատումը կուտակված ամբողջ չօգտագործված օրերի դիմաց (վերջնահաշվարկ)
+        let uncompensatedRemaining = isDismissed ? (accruedVacation - totalAllUsed) : remainingDays;
+        if (uncompensatedRemaining < 0) uncompensatedRemaining = 0;
+        const reserveAmount = parseFloat((uncompensatedRemaining * dailySalary).toFixed(2));
 
         const maxAllowedAccumulated = lastRate * 2.5;
-        const isRisk = remainingDays >= maxAllowedAccumulated || hasExpiredRisk;
+        const isRisk = !isDismissed && (remainingDays >= maxAllowedAccumulated || hasExpiredRisk);
 
         return {
             id: customData && customData.id ? customData.id : (Date.now() + Math.random()),
             code,
             name,
             startDate: startDateVal,
-            calcDate: calcDateVal,
+            calcDate: formatDate(calc).split('.').reverse().join('-'),
             effectiveDays: totalDaysCalendar,
             accrued: accruedVacation,
             usedTotal: totalPaidUsed.toFixed(2),
             unpaidTotal: totalUnpaidDays,
             history: processedHistory,
-            rawHistory: rawVacationHistory, // Խմբագրման ժամանակ նախնական տեսքը պահպանելու համար
-            remaining: remainingDays,
+            rawHistory: rawVacationHistory,
+            remaining: isDismissed ? 0 : remainingDays,
             salary,
             scheduleType,
             extraDays,
             reserveAmount: reserveAmount,
             yearPeriods: yearPeriods,
-            isRisk
+            isRisk,
+            isDismissed
         };
     }
 
@@ -622,7 +661,6 @@
         const container = document.getElementById('vacationContainer');
         container.innerHTML = '';
 
-        // Խմբագրելիս ցույց ենք տալիս օգտատիրոջ մուտքագրած նախնական տողերը (օր․ 46 օր)
         const historyToLoad = emp.rawHistory || emp.history;
         if (historyToLoad && historyToLoad.length > 0) {
             historyToLoad.forEach(h => addVacationRow(h));
@@ -700,10 +738,11 @@
             alertBox.className = 'alert-box alert-success';
             if (addedList.length === 1) {
                 let emp = addedList[0];
-                let reserveText = emp.reserveAmount > 0 ? ` (Պահուստ/Վերջնահաշվարկ՝ <b>${formatMoney(emp.reserveAmount)} AMD</b>)` : '';
-                alertBox.innerHTML = `✅ <b>${emp.name}</b>-ի արձակուրդային մնացորդը կազմում է <b>${emp.remaining} օր</b>${reserveText}։ Ռիսկեր առկա չեն։`;
+                let reserveText = emp.reserveAmount > 0 ? ` (Վերջնահաշվարկ/Փոխհատուցում՝ <b>${formatMoney(emp.reserveAmount)} AMD</b>)` : '';
+                let statusText = emp.isDismissed ? ` (Աշխատանքից ազատված)` : '';
+                alertBox.innerHTML = `✅ <b>${emp.name}</b>-ի հաշվարկը հաջողությամբ կատարվեց${statusText}${reserveText}։`;
             } else {
-                alertBox.innerHTML = `✅ Ներմուծված բոլոր <b>${addedList.length}</b> աշխատակիցների արձակուրդային մնացորդները գտնվում են նորմայի սահմաններում (ռիսկային աշխատակիցներ չկան)։`;
+                alertBox.innerHTML = `✅ Ներմուծված բոլոր <b>${addedList.length}</b> աշխատակիցների հաշվարկները հաջողությամբ թարմացվեցին։`;
             }
         }
     }
@@ -728,10 +767,14 @@
                     } else if (h.type === 'schedule_change' || h.type === 'ռեժիմ') {
                         tagClass = 'history-tag tag-schedule';
                         typeLabel = `Նոր ռեժիմ՝ ${h.days}-օրյա`;
+                    } else if (h.type === 'dismissed' || h.type === 'ազատում') {
+                        tagClass = 'history-tag tag-dismissed';
+                        typeLabel = 'Աշխատանքից ազատում';
                     }
 
                     let yearTag = h.workYearLabel ? ` <b style="color:#2c3e50;">(${h.workYearLabel})</b>` : '';
-                    historyHTML += `<span class="${tagClass}">📅 ${h.date} — <b>${h.days || ''} ${h.type === 'schedule_change' ? 'օրյա' : 'օր'}</b> (${typeLabel})${yearTag}</span>`;
+                    let daysText = (h.type === 'dismissed' || h.type === 'ազատում') ? '' : ` — <b>${h.days || ''} ${h.type === 'schedule_change' ? 'օրյա' : 'օր'}</b>`;
+                    historyHTML += `<span class="${tagClass}">📅 ${h.date}${daysText} (${typeLabel})${yearTag}</span>`;
                 });
             }
 
@@ -749,6 +792,15 @@
 
             const tr = document.createElement('tr');
             if (isEditing) tr.className = 'editing-row';
+
+            let statusBadge = '';
+            if (emp.isDismissed) {
+                statusBadge = '<span class="badge-dismissed">Ազատված</span>';
+            } else if (emp.isRisk) {
+                statusBadge = '<span class="badge-danger">Ռիսկային</span>';
+            } else {
+                statusBadge = '<span class="badge-success">Նորմալ</span>';
+            }
 
             tr.innerHTML = `
                 <td>${emp.code}</td>
@@ -771,11 +823,7 @@
                 <td class="year3-cell ${y3.isExpired ? 'expired-cell' : ''}">${y3.deadline}</td>
 
                 <td><b>${reserveDisplay}</b></td>
-                <td>
-                    ${emp.isRisk 
-                        ? '<span class="badge-danger">Ռիսկային</span>' 
-                        : '<span class="badge-success">Նորմալ</span>'}
-                </td>
+                <td>${statusBadge}</td>
                 <td>
                     <button class="btn-edit" onclick="editEmployee(${emp.id})">✏️ Խմբագրել</button>
                     <button class="btn-delete" onclick="deleteEmployee(${emp.id})">🗑️ Ջնջել</button>
@@ -855,8 +903,9 @@
                     if (h.type === 'unpaid') typeLabel = 'Իր հաշվին';
                     else if (h.type === 'childcare' || h.type === 'խնամք' || h.type === 'Երեխայի խնամք') typeLabel = 'Երեխայի խնամք';
                     else if (h.type === 'schedule_change' || h.type === 'ռեժիմ') typeLabel = 'Ռեժիմի փոփոխություն';
+                    else if (h.type === 'dismissed' || h.type === 'ազատում') typeLabel = 'Աշխատանքից ազատում';
 
-                    wsData2.push([emp.code, emp.name, typeLabel, h.date, h.endDate || '', h.days, h.workYearLabel || '']);
+                    wsData2.push([emp.code, emp.name, typeLabel, h.date, h.endDate || '', h.days || '', h.workYearLabel || '']);
                 });
             }
         });
@@ -975,11 +1024,11 @@
             [
                 "Տաբելային համար", 
                 "Ազգանուն, անուն", 
-                "Ընդունման ամսաթիվ (ՕՕ.ԱԱ.ՏՏՏՏ)", 
-                "Աշխատանքային ռեժիմ (5 կամ 6)", 
-                "Լրացուցիչ օրեր (տարեկան)",
+                "Ընդունման ամսաթիվ", 
+                "Աշխատանքային ռեժիմ (5/6)", 
+                "Լրացուցիչ օրեր (տարեկան)", 
                 "Միջին աշխատավարձ (AMD)", 
-                "Հաշվարկման ամսաթիվ (ՕՕ.ԱԱ.ՏՏՏՏ)"
+                "Հաշվարկման ամսաթիվ"
             ],
             ["0001", "Պողոսյան Պողոս", "15.01.2023", "5", 0, 250000, "01.10.2026"],
             ["0002", "Պետրոսյան Պետրոս", "01.05.2022", "6", 4, 300000, "01.10.2026"]
@@ -988,26 +1037,26 @@
         const sheet2Data = [
             [
                 "Տաբելային համար", 
-                "Տեսակ (paid/unpaid/childcare/schedule_change)", 
-                "Սկզբնաժամկետ / Ամսաթիվ (ՕՕ.ԱԱ.ՏՏՏՏ)", 
-                "Վերջնաժամկետ (Եթե խնամք է)", 
+                "Տեսակ (Վճարովի / իր հաշվին / երեխայի խնամք / ռեժիմի փոփոխություն / աշխատանքից ազատում)", 
+                "Սկզբնաժամկետ / Ամսաթիվ", 
+                "Վերջնաժամկետ (խնամքի համար)", 
                 "Օրերի քանակ / Նոր ռեժիմ"
             ],
-            ["0001", "paid", "10.05.2024", "", 14],
-            ["0001", "unpaid", "01.08.2024", "", 5]
+            ["0001", "Վճարովի", "10.05.2024", "", 14],
+            ["0001", "Աշխատանքից ազատում", "15.08.2026", "", ""]
         ];
 
         const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
-        ws1['!cols'] = [{ wch: 18 }, { wch: 25 }, { wch: 28 }, { wch: 28 }, { wch: 22 }, { wch: 25 }, { wch: 28 }];
+        ws1['!cols'] = [{ wch: 18 }, { wch: 25 }, { wch: 20 }, { wch: 25 }, { wch: 24 }, { wch: 24 }, { wch: 20 }];
 
         const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
-        ws2['!cols'] = [{ wch: 18 }, { wch: 35 }, { wch: 22 }, { wch: 22 }, { wch: 25 }];
+        ws2['!cols'] = [{ wch: 18 }, { wch: 45 }, { wch: 22 }, { wch: 26 }, { wch: 24 }];
 
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, ws1, "Աշխատակիցներ");
         XLSX.utils.book_append_sheet(workbook, ws2, "Պատմություն");
 
-        XLSX.writeFile(workbook, "Արձակուրդների_Ձևանմուշ_2Էջ.xlsx");
+        XLSX.writeFile(workbook, "Արձակուրդների_Ձևանմուշ.xlsx");
     }
 
     function importFromExcel(event) {
@@ -1044,6 +1093,7 @@
                     if (rawType.includes('unpaid') || rawType.includes('իր հաշվին')) typeVal = 'unpaid';
                     else if (rawType.includes('childcare') || rawType.includes('խնամք')) typeVal = 'childcare';
                     else if (rawType.includes('schedule') || rawType.includes('ռեժիմ')) typeVal = 'schedule_change';
+                    else if (rawType.includes('dismissed') || rawType.includes('ազատում')) typeVal = 'dismissed';
 
                     if (!historyMap[hCode]) {
                         historyMap[hCode] = [];
